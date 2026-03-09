@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>PICKLEBALL</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:#0b1820;
+  display:flex;flex-direction:column;align-items:center;
+  font-family:'DM Sans',sans-serif;color:#e8f4e8;
+  user-select:none;touch-action:manipulation;
+}
+#wrap{
+  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:860px;padding:0 8px;
+  height:100%;
+}
+#topbar{display:flex;align-items:center;justify-content:space-between;width:100%;padding:4px 4px 3px;flex-shrink:0;}
+h1{font-family:'Bebas Neue',cursive;font-size:clamp(16px,4.5vw,28px);letter-spacing:4px;color:#6ddc5a;text-shadow:0 0 18px rgba(109,220,90,0.4)}
+#scoreboard{display:flex;align-items:center;gap:8px;font-family:'Bebas Neue',cursive}
+.slabel{color:#6ddc5a;font-size:clamp(10px,2.5vw,14px);letter-spacing:2px}
+.snum{color:#fff;font-size:clamp(20px,4.5vw,30px);min-width:22px;text-align:center}
+.sdash{color:#334;font-size:clamp(12px,2.5vw,18px)}
+canvas{display:block;width:100%;height:auto;border-radius:6px;border:1px solid rgba(255,255,255,0.07);flex-shrink:0;}
+#bottom{
+  width:100%;flex:1;
+  display:flex;flex-direction:column;
+  gap:0;margin-top:6px;
+  min-height:0;
+}
+/* ── Timing + msg row ── */
+#timingrow{
+  display:flex;align-items:center;gap:8px;
+  width:100%;padding:0 2px;
+  flex-shrink:0;margin-bottom:5px;
+}
+#timingwrap{display:flex;flex-direction:column;align-items:flex-start;gap:2px;flex-shrink:0;}
+#timingwrap label{font-size:9px;letter-spacing:2px;color:#556;text-transform:uppercase}
+#tbar{width:100%;height:7px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+#tfill{height:100%;width:0%;border-radius:4px;transition:width .07s,background .07s}
+#timingbarwrap{flex:1;display:flex;flex-direction:column;gap:2px;}
+#timingbarlabel{font-size:9px;letter-spacing:2px;color:#556;text-transform:uppercase;}
+#tbarfull{width:100%;height:7px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;}
+#tfillfull{height:100%;width:0%;border-radius:4px;transition:width .07s,background .07s;}
+#msgbar{font-size:clamp(10px,2.8vw,13px);font-weight:600;letter-spacing:.4px;color:#888;min-height:18px;text-align:center;flex-shrink:0;}
+/* ── D-pad area fills remaining space ── */
+#dpadarea{
+  flex:1;width:100%;min-height:0;
+  position:relative;
+}
+/* Big serve button — covers entire dpad area */
+#serveBtn{
+  position:absolute;inset:0;
+  font-family:'Bebas Neue',cursive;font-size:clamp(28px,8vw,52px);letter-spacing:6px;
+  border:2px solid #6ddc5a;border-radius:10px;
+  cursor:pointer;background:rgba(109,220,90,.10);color:#6ddc5a;
+  transition:all .2s;display:none;width:100%;height:100%;
+  flex-direction:column;align-items:center;justify-content:center;
+}
+#serveBtn:active{background:rgba(109,220,90,.28)}
+/* D-pad grid */
+#shotbtns{
+  position:absolute;inset:0;
+  display:none;
+  grid-template-columns:1fr 1fr 1fr;
+  grid-template-rows:1fr 1fr 1fr;
+  gap:5px;
+  width:100%;height:100%;
+}
+#bLob  {grid-column:2;grid-row:1;}
+#bDink {grid-column:1;grid-row:2;}
+#bSplit{grid-column:2;grid-row:2;}
+#bDrive{grid-column:3;grid-row:2;}
+#bDrop {grid-column:2;grid-row:3;}
+.sBtn{
+  font-family:'Bebas Neue',cursive;
+  font-size:clamp(12px,3.5vw,20px);letter-spacing:1.5px;
+  border:2px solid;border-radius:10px;
+  cursor:pointer;background:transparent;
+  transition:all .12s;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  touch-action:manipulation;
+  width:100%;height:100%;padding:0;
+}
+.sBtn span{font-family:'DM Sans',sans-serif;font-size:clamp(8px,1.8vw,11px);letter-spacing:0;color:inherit;opacity:.6;margin-top:3px;font-weight:600;text-align:center;line-height:1.2;}
+.sBtn:not(.inactive):active{transform:scale(0.93);background:rgba(255,255,255,0.05)}
+.sBtn.inactive{opacity:.18;cursor:not-allowed}
+#bDrive{border-color:#ff6b35;color:#ff6b35}
+#bLob  {border-color:#6ddc5a;color:#6ddc5a}
+#bDink {border-color:#4db8ff;color:#4db8ff}
+#bDrop {border-color:#ffcc44;color:#ffcc44}
+#bSplit{border-color:#445;color:#667;font-size:clamp(9px,2vw,13px);}
+#keys{font-size:9px;color:#334;letter-spacing:1px;text-align:center;flex-shrink:0;padding:2px 0;}
+#muteBtn{
+  position:fixed;bottom:10px;right:10px;z-index:50;
+  font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:1px;
+  padding:7px 11px 5px;border:1px solid #334;border-radius:6px;
+  cursor:pointer;background:rgba(0,0,0,0.5);color:#6ddc5a;
+  border-color:#6ddc5a;
+  transition:all .18s;
+}
+#muteBtn.muted{border-color:#334;color:#445;}
+#muteBtn:active{transform:scale(0.94);}
+/* Keyboard hints — desktop only */
+kbd{
+  display:none;
+  font-family:'DM Sans',sans-serif;font-size:9px;font-style:normal;
+  color:#445;letter-spacing:0;font-weight:500;margin-top:2px;
+  border:none;background:none;padding:0;
+}
+#serveBtn kbd{font-size:clamp(10px,1.8vw,13px);opacity:0.45;display:none;margin-top:4px;}
+@media (hover:hover) and (pointer:fine){
+  kbd{display:block;}
+  #serveBtn kbd{display:block;}
+}
+
+/* ── Tutorial overlay ── */
+#tutScreen{
+  position:fixed;inset:0;background:#0b1820;z-index:200;
+  overflow-y:auto;
+  padding:32px 20px 100px;
+  display:flex;flex-direction:column;align-items:center;
+}
+#tutScreen h2{
+  font-family:'Bebas Neue',cursive;font-size:clamp(22px,6vw,38px);
+  letter-spacing:5px;color:#6ddc5a;text-shadow:0 0 20px rgba(109,220,90,.4);
+  text-align:center;margin-bottom:4px;flex-shrink:0;
+}
+#tutScreen p.sub{font-size:clamp(10px,2.2vw,12px);color:#556;letter-spacing:.3px;text-align:center;margin-bottom:28px;flex-shrink:0;}
+#tutList{width:100%;max-width:460px;display:flex;flex-direction:column;gap:20px;}
+.tutCard{
+  display:flex;flex-direction:column;gap:8px;
+  padding:16px 18px 14px;
+  border:1px solid rgba(255,255,255,0.08);border-radius:12px;
+  background:rgba(255,255,255,0.03);
+}
+.tutCardTop{display:flex;align-items:center;gap:12px;}
+.tutIcon{font-size:clamp(24px,5vw,30px);line-height:1;flex-shrink:0;}
+.tutTitle{
+  font-family:'Bebas Neue',cursive;font-size:clamp(14px,3.5vw,20px);
+  letter-spacing:2px;color:#e8f4e8;
+}
+.tutBody{
+  font-size:clamp(12px,2.8vw,14px);color:#99b;line-height:1.6;
+}
+#tutEndBtn{
+  position:fixed;bottom:0;left:0;right:0;
+  font-family:'Bebas Neue',cursive;font-size:clamp(16px,4vw,22px);letter-spacing:3px;
+  padding:16px 40px 13px;
+  border:none;border-top:2px solid #6ddc5a;
+  cursor:pointer;background:#0b1820;color:#6ddc5a;
+  transition:background .18s;z-index:201;
+  text-align:center;
+}
+#tutEndBtn:active{background:rgba(109,220,90,.15);}
+/* ── Difficulty select overlay ── */
+#diffScreen{
+  position:fixed;inset:0;background:#0b1820;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 16px;gap:18px;
+}
+#diffScreen h2{
+  font-family:'Bebas Neue',cursive;font-size:clamp(22px,6vw,38px);
+  letter-spacing:5px;color:#6ddc5a;text-shadow:0 0 20px rgba(109,220,90,.4);
+  text-align:center;
+}
+#diffScreen p{font-size:clamp(11px,2.5vw,13px);color:#778;letter-spacing:.3px;text-align:center;}
+#diffBtns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;}
+.diffBtn{
+  font-family:'Bebas Neue',cursive;font-size:clamp(14px,3.5vw,20px);letter-spacing:2px;
+  padding:14px 20px 11px;border:2px solid;border-radius:8px;
+  cursor:pointer;background:transparent;text-align:left;
+  transition:all .15s;display:flex;justify-content:space-between;align-items:baseline;
+}
+.diffBtn span{font-family:'DM Sans',sans-serif;font-size:clamp(9px,2vw,11px);letter-spacing:0;opacity:.65;font-weight:600;}
+.diffBtn:active{transform:scale(.97);}
+.d1{border-color:#6ddc5a;color:#6ddc5a;} .d1:hover{background:rgba(109,220,90,.1);}
+.d2{border-color:#4db8ff;color:#4db8ff;} .d2:hover{background:rgba(77,184,255,.1);}
+.d3{border-color:#ffcc44;color:#ffcc44;} .d3:hover{background:rgba(255,204,68,.1);}
+.d4{border-color:#ff6b35;color:#ff6b35;} .d4:hover{background:rgba(255,107,53,.1);}
+</style>
+</head>
+<body>
+<div id="tutScreen">
+  <h2>🏓 PICKLEBALL</h2>
+  <p class="sub">How to play — scroll to read all tips</p>
+  <div id="tutList">
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">🎯</div><div class="tutTitle">Timing is Everything</div></div>
+      <div class="tutBody">Shots made closer to your paddle are stronger and more accurate. Watch the timing bar — green means perfect, red means weak.</div>
+    </div>
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">🥅</div><div class="tutTitle">Drive Smart</div></div>
+      <div class="tutBody">Drives made when the ball is below the net will always hit the net. Wait for the ball to rise before unleashing a fast drive.</div>
+    </div>
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">⚡</div><div class="tutTitle">Split Step Boost</div></div>
+      <div class="tutBody">Press Split Step just before your opponent hits the ball to gain a boost in strength and accuracy on your next shot. The button glows gold when the window is open.</div>
+    </div>
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">💥</div><div class="tutTitle">Wear Them Down</div></div>
+      <div class="tutBody">Every fast drive and sharp dink battle slowly wears down your opponent's accuracy. Keep the pressure on and they'll start making mistakes.</div>
+    </div>
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">🎮</div><div class="tutTitle">Click with Intention</div></div>
+      <div class="tutBody">Press a shot button only when you want to hit the ball. Spam clicking will result in inaccurate shots and pop-ups that are easy for your opponent to attack.</div>
+    </div>
+    <div class="tutCard">
+      <div class="tutCardTop"><div class="tutIcon">🔀</div><div class="tutTitle">Stay Unpredictable</div></div>
+      <div class="tutBody">Use different shots to keep your opponent guessing. Repeating the same shot makes it easier for the AI to anticipate and counter your moves.</div>
+    </div>
+  </div>
+</div>
+<button id="tutEndBtn" onclick="endTutorial()">START GAME</button>
+<div id="diffScreen" style="display:none;">
+  <h2>🏓 PICKLEBALL</h2>
+  <p>Select opponent difficulty</p>
+  <div id="diffBtns">
+    <button class="diffBtn d1" onclick="startGame(1)">
+      DUPR ≤ 3.0 — Beginner
+      <span>Lob-heavy · waits for bounce</span>
+    </button>
+    <button class="diffBtn d2" onclick="startGame(2)">
+      DUPR 3.0 – 3.2 — Intermediate
+      <span>Drive-heavy · waits for bounce</span>
+    </button>
+    <button class="diffBtn d3" onclick="startGame(3)">
+      DUPR 3.2 – 3.5 — Advanced
+      <span>Drive + dink mix · reads ball</span>
+    </button>
+    <button class="diffBtn d4" onclick="startGame(4)">
+      DUPR 3.5+ — Elite
+      <span>Dink-dominant · volleys aggressively</span>
+    </button>
+  </div>
+</div>
+<div id="wrap">
+  <div id="topbar">
+    <h1>🏓 PICKLEBALL</h1>
+    <div id="scoreboard">
+      <span class="slabel">YOU</span>
+      <span class="snum" id="sP">0</span>
+      <span class="sdash">—</span>
+      <span class="snum" id="sA">0</span>
+      <span class="slabel">AI</span>
+    </div>
+  </div>
+
+  <canvas id="c"></canvas>
+
+  <div id="bottom">
+    <div id="msgbar">Select difficulty to start</div>
+    <div id="timingrow">
+      <div id="timingbarwrap">
+        <div id="timingbarlabel">TIMING</div>
+        <div id="tbarfull"><div id="tfillfull"></div></div>
+      </div>
+    </div>
+    <div id="dpadarea">
+      <button id="serveBtn">SERVE<kbd>Space</kbd></button>
+      <div id="shotbtns">
+        <button class="sBtn inactive" id="bLob"  >LOB<span>High Arc</span><kbd>↑</kbd></button>
+        <button class="sBtn inactive" id="bDink" >DINK<span>Kitchen</span><kbd>←</kbd></button>
+        <button class="sBtn inactive" id="bSplit">SPLIT<span>STEP</span><kbd>Space</kbd></button>
+        <button class="sBtn inactive" id="bDrive">DRIVE/<span>OVERHEAD</span><kbd>→</kbd></button>
+        <button class="sBtn inactive" id="bDrop" >DROP<span>↓ Kitchen</span><kbd>↓</kbd></button>
+      </div>
+    </div>
+    <div id="keys">Space=Serve/Split · ↑ Lob · → Drive · ↓ Drop · ← Dink</div>
+  </div>
+</div>
+<button id="muteBtn" onclick="toggleMute()">🔊 SFX</button>
+
+<script>
+// ── Canvas: fixed logical size, CSS scales it ─────────────────────────
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const LW = 820, LH = 440;
+cv.width = LW; cv.height = LH;
+
+function resize(){
+  const avW = Math.min(window.innerWidth - 16, 860);
+  const s   = avW / LW;
+  cv.style.width  = Math.floor(LW*s)+'px';
+  cv.style.height = Math.floor(LH*s)+'px';
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Court constants (logical px) ──────────────────────────────────────
+const GY      = LH - 55;
+const NET_X   = LW / 2;
+const NET_H   = 73; // lowered 10%
+const NET_TOP = GY - NET_H;
+const KW      = 115;
+const LKE     = NET_X - KW;
+const RKS     = NET_X + KW;
+const LB      = 28;
+const RB      = LW - 28;
+const G       = 0.27;
+const BALL_R  = 7;
+const REACH   = 70;        // paddle-to-ball reach in px
+const SF      = 1/0.7;     // 30% slower ball
+const MIN_Y   = 8;         // ball must never go above this canvas y
+const PADDLE_DX = 36;      // paddle head is this many px in front of player x
+
+// ── State ─────────────────────────────────────────────────────────────
+let gs='idle', score={p:0,a:0}, rally=0;
+let pl={x:130,y:GY};
+let ai={x:LW-130,y:GY,spd:3.5,timer:0,hit:false};
+let ball={x:130,y:GY-70,vx:0,vy:0,spin:0,inPlay:false,hitter:'none',bounces:0};
+let plCanEnterNVZ=false;
+let aiCanEnterNVZ=false;
+let netFault=false;
+let fx=[];
+let plHitAnim=0;
+let plHitContactY=GY-70;
+let aiHitAnim=0;
+let aiHitContactY=GY-70;
+let lastShotType='';
+let consecutiveSameShots=0;
+let aiAccuracy=1.0;
+let splitStepBoost=false;
+let splitStepGlow=0;
+let serveRally=false; // true until both sides have bounced once after serve
+let msg='Press SERVE to start', msgCol='#aaa';
+
+// ── Difficulty config ──────────────────────────────────────────────────
+// shotWeights: [lob, drive, dink, drop] probabilities (must sum to 1)
+// bounceWait: 0=never wait, 1=always wait for bounce before hitting
+// lobDriveChance: % chance AI drives when ball peak is predicted above net height
+// volleyDriveChance: % chance AI drives when ball is above net before bouncing
+const DIFFICULTIES = {
+  1: { label:'DUPR ≤ 3.0',  shotWeights:[0.70, 0.083, 0.05, 0.167], bounceWait:0.85, timerMult:1.0,  spd:2.8, lobDriveChance:0.30, volleyDriveChance:0.10, belowNetDriveChance:0.04 },
+  2: { label:'DUPR 3–3.2',  shotWeights:[0.133,0.60,  0.133,0.133], bounceWait:0.75, timerMult:0.85, spd:3.2, lobDriveChance:0.50, volleyDriveChance:0.30, belowNetDriveChance:0.03 },
+  3: { label:'DUPR 3.2–3.5',shotWeights:[0.20, 0.40,  0.20, 0.20],  bounceWait:0.40, timerMult:0.70, spd:3.8, lobDriveChance:0.65, volleyDriveChance:0.40, belowNetDriveChance:0.02 },
+  4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.50, belowNetDriveChance:0.01 },
+};
+let diff = DIFFICULTIES[2]; // default until chosen
+
+
+// ── Sound ─────────────────────────────────────────────────────────────
+const HIT_SOUNDS = [
+  new Audio('https://filedn.eu/lxH8tISH75BJpFM7FmXX9W5/pickleball_2d_fun/pickleball_sound_1_new.mp3'),
+  new Audio('https://filedn.eu/lxH8tISH75BJpFM7FmXX9W5/pickleball_2d_fun/pickleball_sound_2_news.mp3'),
+];
+HIT_SOUNDS.forEach(a=>{ a.preload='auto'; a.volume=0.7; });
+let soundOn = true;
+function playHitSound(){
+  if(!soundOn) return;
+  const snd = HIT_SOUNDS[Math.random()<0.5?0:1];
+  snd.currentTime = 0;
+  snd.play().catch(()=>{});
+}
+function toggleMute(){
+  soundOn = !soundOn;
+  const btn = document.getElementById('muteBtn');
+  btn.textContent = soundOn ? '🔊 SFX' : '🔇 SFX';
+  btn.classList.toggle('muted', !soundOn);
+}
+
+
+function endTutorial(){
+  document.getElementById('tutScreen').style.display='none';
+  document.getElementById('tutEndBtn').style.display='none';
+  document.getElementById('diffScreen').style.display='flex';
+}
+
+function startGame(level){
+  diff = DIFFICULTIES[level];
+  ai.spd = diff.spd;
+  document.getElementById('diffScreen').style.display='none';
+  showServe();
+}
+
+// ── AI return probability tuning ───────────────────────────────────────
+// Adjust these 3 values to tune how hard the AI is to beat.
+
+// 1) How much the distance between AI and the player's paddle boosts AI return chance.
+//    Further apart = ball travelled farther = weaker/slower arrival = easier for AI.
+//    0 = distance has no effect. 1 = full court distance gives AI a guaranteed return.
+const AI_DIST_BOOST = 0.70;
+
+// 2) How much ball speed reduces AI return chance.
+//    Higher = fast drives are harder to return.
+//    Calibrated so a max-speed drive (~14 px/frame) reduces chance by this amount.
+const AI_SPEED_PENALTY = 0.25;
+
+// 3) How much each rally exchange reduces AI return chance (fatigue).
+//    e.g. 0.015 → after 20 rallies AI return chance is reduced by 0.30.
+const AI_RALLY_FATIGUE = 0.007;
+
+// Returns probability (0–1) that AI successfully returns the ball this decision tick.
+function aiReturnProb(){
+  // Factor 1: distance from AI to player's paddle — further = higher chance for AI
+  const courtWidth = RB - LB;
+  const distToPlayer = Math.abs(ai.x - paddleX());
+  const distRatio = Math.min(distToPlayer / courtWidth, 1); // 0 (same spot) → 1 (max apart)
+  const distFactor = 0.5 + distRatio * AI_DIST_BOOST;       // 0.5 baseline, up to 0.5+boost
+
+  // Factor 2: ball speed — slower = easier to return
+  const speed = Math.abs(ball.vx); // horizontal speed only
+  const speedFactor = 1 - Math.min(speed / 14, 1) * AI_SPEED_PENALTY;
+
+  // Factor 3: rally fatigue — longer rallies reduce AI return chance
+  const fatigueFactor = Math.max(0, 1 - rally * AI_RALLY_FATIGUE);
+
+  return Math.max(0, Math.min(1, distFactor * speedFactor * fatigueFactor));
+}
+
+// ── Physics helpers ───────────────────────────────────────────────────
+function launch(sx,sy,tx,ty,T){
+  return {vx:(tx-sx)/T, vy:(ty-sy-0.5*G*T*T)/T};
+}
+// Clamp vy so the ball peak stays within the canvas (y >= MIN_Y)
+function capPeak(v,sy){
+  // Peak y = sy - vy²/(2G).  We need sy - vy²/(2G) >= MIN_Y
+  const maxVy = -Math.sqrt(2*G*Math.max(0, sy-MIN_Y));
+  if(v.vy < maxVy) v.vy = maxVy;
+  return v;
+}
+function ensureNetClear(v,sx,sy){
+  const tNet=(NET_X-sx)/v.vx;
+  if(tNet>0){
+    const yAtNet=sy+v.vy*tNet+0.5*G*tNet*tNet;
+    const need=NET_TOP-10;
+    if(yAtNet>need) v.vy-=(yAtNet-need)/tNet;
+  }
+  return v;
+}
+function launchThrough(sx,sy,netClearY,tx,Tout){
+  var landY=GY-BALL_R, dxNet=NET_X-sx, dxTotal=tx-sx, ratio=dxTotal/dxNet;
+  var A=0.5*G*(1-ratio), B=netClearY-sy-(landY-sy)/ratio, t1sq=B/A;
+  if(t1sq<=0) return null;
+  var t1=Math.sqrt(t1sq), T=t1*ratio;
+  var vy=(landY-sy-0.5*G*T*T)/T, vx=dxTotal/T;
+  Tout.T=T; return capPeak({vx:vx,vy:vy},sy);
+}
+function rnd(a,b){return a+Math.random()*(b-a);}
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+function inNVZ(x){return x>LKE&&x<NET_X;}
+
+// Predict the minimum Y (highest point) the ball will reach from current state
+// Lower canvas Y = higher in the air, so minimum Y = peak height
+function ballPeakY(){
+  if(ball.vy >= 0) return ball.y; // already falling, current pos is peak
+  return ball.y - (ball.vy * ball.vy) / (2 * G);
+}
+
+// Returns true if ball (on AI side) will still be above NET_TOP before its first bounce
+function ballCanVolleyAboveNet(){
+  let x=ball.x, y=ball.y, vx=ball.vx, vy=ball.vy;
+  for(let i=0;i<200;i++){
+    vy+=G; x+=vx; y+=vy;
+    if(y>=GY-BALL_R) return false; // bounced before crossing net height
+    if(y < NET_TOP) return true;   // ball is above net — volley window open
+    if(x < NET_X-5) break;         // ball left AI's side
+  }
+  return false;
+}
+// Paddle world x (player faces right, paddle extends forward)
+function paddleX(){ return pl.x + PADDLE_DX; }
+function distToBall(){ return Math.abs(ball.x - paddleX()); }
+function timingQ(){
+  const d=distToBall();
+  let q;
+  if(d<22) q=1.0;
+  else if(d<45) q=0.80;
+  else if(d<REACH*0.7) q=0.55;
+  else if(d<REACH) q=0.30;
+  else q=0;
+  // Split step boost: nudge quality up significantly (not beyond 1.0)
+  if(splitStepBoost && q>0) q=Math.min(1.0, q+0.25);
+  return q;
+}
+function addFx(x,y,c){fx.push({x,y,r:8,a:1,c,dr:0.07});}
+function setMsg(m,col='#ccc'){
+  msg=m; msgCol=col;
+  document.getElementById('msgbar').textContent=m;
+  document.getElementById('msgbar').style.color=col;
+}
+
+// Simulate ball forward and return first-bounce x on the given side ('left'|'right')
+function predictLanding(){
+  let x=ball.x,y=ball.y,vx=ball.vx,vy=ball.vy;
+  for(let i=0;i<400;i++){
+    vy+=G; x+=vx; y+=vy;
+    if(y>=GY-BALL_R){ return x; }  // first bounce
+    if(x<LB-40||x>RB+40) return x;
+  }
+  return x;
+}
+
+// ── Player shot ───────────────────────────────────────────────────────
+function playerHit(type){
+  if(gs!=='rally') return;
+  if(ball.hitter==='player') return;
+  if(distToBall()>REACH){setMsg('Too far to reach!','#ff6b35');return;}
+  if(inNVZ(pl.x) && !plCanEnterNVZ){setMsg('No shots in the NVZ!','#ffcc44');return;}
+  // Two-bounce serve rule: player cannot volley the AI's return of serve
+  if(serveRally && ball.bounces===0){setMsg('Must let it bounce! (serve rule)','#ffcc44');return;}
+
+  const q=timingQ();
+  if(q===0){setMsg('Missed!','#ff6b35');return;}
+  // Perfect timing = zero spread, tx locked to centre of safe zone
+  const perfect = q>=0.9;
+  const spread = perfect ? 0 : (1-q)*55;
+
+  let v, T;
+
+  // ── DRIVE ──────────────────────────────────────────────────────────────
+  if(type==='drive'){
+    const txBase = perfect ? (RKS+40 + RB-20)/2 : rnd(RKS+25,RB-12)+rnd(-spread,spread);
+    const tx=clamp(txBase, NET_X+5, RB-8);
+    // Perfect = T~14 (blazing), Late (q=0.3) = T~34 (slow) — 2.4× speed range
+    T = (14 + (1-q)*20) * SF;
+    v=capPeak(launch(ball.x,ball.y,tx,GY-BALL_R,T), ball.y);
+    const ballBelowNet = ball.y >= NET_TOP-4;
+    if(ballBelowNet){
+      if(Math.random() < 0.5){
+        // Hits the net
+        const tNet=NET_X-ball.x;
+        v.vx = tNet/20; v.vy = -1.5;
+        netFault=true;
+      } else {
+        // Clears net but flies way out past AI baseline
+        v = capPeak(launch(ball.x, ball.y, RB + rnd(40, 100), GY-BALL_R, T*0.8), ball.y);
+      }
+    } else if(!perfect){
+      const tN=(NET_X-ball.x)/v.vx;
+      const willClip = tN>0 && (ball.y+v.vy*tN+0.5*G*tN*tN) > NET_TOP-2;
+      if(willClip){
+        const tNet=NET_X-ball.x;
+        v.vx = tNet/20;
+        v.vy = -1.5;
+        netFault=true;
+      }
+    }
+  }
+  // ── LOB ────────────────────────────────────────────────────────────────
+  else if(type==='lob'){
+    const txBase = perfect ? (RB-100 + RB-15)/2 : rnd(RB-100,RB-15)+rnd(-spread,spread);
+    const tx = clamp(txBase, NET_X+8, RB-8);
+    // great/perfect: ball must be near canvas TOP when crossing net → true high arc
+    // bad: much lower crossing → shallow floater easy to smash
+    const netClearY = q>=0.7
+      ? MIN_Y + 15                          // near top of canvas = high arc
+      : NET_TOP - 20 - (1-q)*40;           // low/mid arc on bad timing
+    const Tout={T:0};
+    v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+    if(!v){ v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,120*SF),ball.x,ball.y),ball.y); Tout.T=120*SF; }
+    T = Tout.T;
+    ball.spin = q>=0.7 ? 0.06 : 0.02;
+  }
+  // ── DINK ───────────────────────────────────────────────────────────────
+  else if(type==='dink'){
+    const txBase = perfect ? (NET_X+12 + RKS-12)/2 : rnd(NET_X+12,RKS-12)+rnd(-spread*0.5,spread*0.5);
+    const tx = clamp(txBase, NET_X+6, RKS-6);
+    // Perfect/great: skims tight just over net (low = hard to attack)
+    // Bad timing: floats HIGH near canvas top (easy to drive/smash back)
+    const netClearY = q>=0.7
+      ? NET_TOP - 12                          // tight, just clears net
+      : MIN_Y + (q/0.7) * (NET_TOP - 12 - MIN_Y - 30); // bad → near top of screen
+    const Tout={T:0};
+    v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+    if(!v){ v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,78*SF),ball.x,ball.y),ball.y); Tout.T=78*SF; }
+    T = Tout.T;
+    ball.spin = q>=0.7 ? 0.10 : 0.04;
+  }
+  // ── DROP ───────────────────────────────────────────────────────────────
+  else if(type==='drop'){
+    const txBase = perfect ? (NET_X+14 + RKS-14)/2 : rnd(NET_X+14,RKS-14)+rnd(-spread*0.4,spread*0.4);
+    const tx=clamp(txBase, NET_X+6, RKS-6);
+    // Perfect: controlled arc, crosses net low-ish then drops steeply (topspin)
+    // Bad: pops up near canvas top — floats, easy to smash
+    const netClearY = q>=0.7
+      ? NET_TOP - 30                          // controlled, moderate height at net
+      : MIN_Y + (q/0.7) * (NET_TOP - 30 - MIN_Y - 20); // bad → near top of screen
+    const Tout={T:0};
+    v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+    if(!v){
+      const peakY = clamp(MIN_Y+(1-q)*80, MIN_Y+5, GY*0.18);
+      const riseH = Math.max(ball.y-peakY, 10);
+      const vyUp  = -Math.sqrt(2*G*riseH);
+      const tUp   = -vyUp/G;
+      T = tUp + Math.sqrt(2*(GY-BALL_R-peakY)/G);
+      v = capPeak({vx:(tx-ball.x)/T, vy:vyUp}, ball.y);
+      Tout.T = T;
+    }
+    T = Tout.T;
+    ball.spin = 0.05;
+  }
+
+  ball.vx=v.vx; ball.vy=v.vy;
+  if(type==='drive') ball.spin=0;
+  ball.hitter='player'; ball.bounces=0;
+  splitStepBoost=false; splitStepGlow=0; // boost consumed on hit
+  // Trigger swing animation — snapshot contact point
+  plHitAnim=22; plHitContactY=ball.y;
+  // Track consecutive same shot type
+  if(type === lastShotType) consecutiveSameShots++;
+  else { lastShotType=type; consecutiveSameShots=1; }
+  ai.hit=false; ai.timer=Math.round(T*0.62*diff.timerMult);
+  aiCanEnterNVZ=false;
+
+  const ql=q>=0.9?'PERFECT!':q>=0.7?'GREAT':q>=0.5?'GOOD':'LATE';
+  const qc=q>=0.9?'#6ddc5a':q>=0.7?'#4db8ff':q>=0.5?'#ffcc44':'#ff6b35';
+  // Degrade AI accuracy based on shot quality
+  if(type==='drive'){
+    if(q>=0.9) aiAccuracy=Math.max(0.30, aiAccuracy-0.02);
+    else if(q>=0.7) aiAccuracy=Math.max(0.30, aiAccuracy-0.01);
+  } else if(type==='dink' && q>=0.9){
+    aiAccuracy=Math.max(0.30, aiAccuracy-0.01);
+  }
+  setMsg(type.toUpperCase()+' – '+ql,qc);
+  addFx(ball.x,ball.y,qc); playHitSound();
+  rally++;
+  updateUI();
+}
+
+// ── AI shot ───────────────────────────────────────────────────────────
+function aiHit(){
+  if(ball.hitter==='ai') return;
+  ai.hit=true;
+  const r=Math.random();
+  const [wLob, wDrive, wDink, wDrop] = diff.shotWeights;
+  let tx,T;
+
+  // ── Below-net drive error (checked first, before all other logic) ────
+  // Not applied on serve returns — AI always returns serve cleanly
+  const isServeReturn = serveRally && rally === 0;
+  const aiBelowNet = ball.y >= NET_TOP - 4;
+  if(!isServeReturn && aiBelowNet && Math.random() < diff.belowNetDriveChance){
+    // AI mishits from below net — drives anyway, ball hits net or flies out
+    tx = rnd(LB+15, LKE-10); T = 28*SF;
+    tx = clamp(tx, LB+5, NET_X-5);
+    const v0 = capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
+    // Force the ball toward or over the net badly
+    if(Math.random() < 0.5){
+      ball.vx = (NET_X-ball.x)/20; ball.vy = -1.5; // hits net
+    } else {
+      const vOut = capPeak(launch(ball.x, ball.y, NET_X - rnd(40,100), GY-BALL_R, T*0.8), ball.y);
+      ball.vx=vOut.vx; ball.vy=vOut.vy; // flies far out of player's side
+    }
+    ball.hitter='ai'; ball.bounces=0; ball.spin=0;
+    aiHitAnim=22; aiHitContactY=ball.y;
+    plCanEnterNVZ=false;
+    addFx(ball.x,ball.y,'#ff9090'); playHitSound();
+    updateUI();
+    return;
+  }
+
+  // Elite AI (3.5+): drive if ball is above net height and AI paddle is close
+  const aiPaddleX = ai.x - PADDLE_DX;
+  const nearBall = Math.abs(ball.x - aiPaddleX) < REACH;
+  const ballAboveNet = ball.y < NET_TOP;
+  const eliteDrive = diff === DIFFICULTIES[4] && ballAboveNet && nearBall;
+
+  // On serve return (rally===0, serveRally active): always lob or drive if above net
+
+  // ── Opportunistic drive checks (supersede normal shot weights) ────────
+  // Condition 1: ball peak predicted above net → lobDriveChance to drive
+  const peakAboveNet = ballPeakY() < NET_TOP;
+  // Condition 2: ball can be volleyed above net before bounce → volleyDriveChance
+  const volleyAboveNet = ball.bounces === 0 && ballCanVolleyAboveNet();
+
+  let forceDrive = false;
+  if(!isServeReturn){
+    if(peakAboveNet && Math.random() < diff.lobDriveChance) forceDrive = true;
+    else if(volleyAboveNet && Math.random() < diff.volleyDriveChance) forceDrive = true;
+  }
+
+  const isDrive = forceDrive || eliteDrive;
+
+  if(isServeReturn){
+    if(ballAboveNet && Math.random()<0.40){
+      tx=rnd(LB+15, LKE-10); T=28*SF;
+    } else {
+      tx=rnd(LB+10,LB+80); T=90*SF;
+    }
+  } else if(isDrive){
+    tx=rnd(LB+15, LKE-10); T=28*SF;
+  } else if(r < wLob){
+    tx=rnd(LB+10,LB+80); T=90*SF;
+  } else if(r < wLob+wDrive){
+    tx=rnd(LB+15,LKE-15); T=32*SF;
+  } else if(r < wLob+wDrive+wDink){
+    tx=rnd(LKE+8,NET_X-8); T=70*SF;
+  } else {
+    tx=rnd(LKE-55,LKE+8); T=70*SF;
+  }
+  tx=clamp(tx,LB+5,NET_X-5);
+  const errorRange = (1 - aiAccuracy) * (isDrive ? 40 : 120);
+  tx = clamp(tx + rnd(-errorRange, errorRange), LB+5, NET_X-5);
+  const v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
+  ball.vx=v.vx; ball.vy=v.vy;
+  ball.hitter='ai'; ball.bounces=0; ball.spin=0;
+  aiHitAnim=22; aiHitContactY=ball.y;
+  plCanEnterNVZ=false;
+  addFx(ball.x,ball.y,'#ff9090'); playHitSound();
+  updateUI();
+}
+
+// ── Split Step ────────────────────────────────────────────────────────
+function splitStep(){
+  if(gs!=='rally') return;
+  // Good window: ball is on AI's side and AI is about to hit
+  // Measure how soon AI will hit: ai.timer is frames remaining
+  const windowGood = ball.hitter==='player' && ball.x>NET_X && ai.timer>0 && ai.timer<28;
+  if(windowGood){
+    splitStepBoost=true;
+    splitStepGlow=90; // glow for ~1.5 seconds
+    setMsg('SPLIT STEP! ⚡ Boost active','#ffe066');
+  } else {
+    setMsg('Split Step – bad timing','#ff6b35');
+  }
+}
+function serve(){
+  if(gs!=='idle') return;
+  const tx=rnd(RKS+30,RB-40);
+  const T=60*SF;
+  ball.x=pl.x; ball.y=GY-70;
+  const v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
+  ball.vx=v.vx; ball.vy=v.vy;
+  ball.inPlay=true; ball.hitter='player'; ball.bounces=0; ball.spin=0;
+  ai.hit=false; ai.timer=Math.round(T*0.6*diff.timerMult);
+  plCanEnterNVZ=false; aiCanEnterNVZ=false;
+  serveRally=true; // two-bounce rule in effect
+  gs='rally'; rally=0;
+  document.getElementById('serveBtn').style.display='none';
+  document.getElementById('shotbtns').style.display='grid';
+  setMsg('Serving…','#6ddc5a');
+  updateUI();
+}
+
+// ── Point bookkeeping ─────────────────────────────────────────────────
+function endPoint(winner,reason){
+  gs='over'; ball.inPlay=false; disableAll();
+  if(winner==='player'){score.p++;setMsg('YOU WIN: '+reason,'#6ddc5a');}
+  else{score.a++;setMsg('AI SCORES: '+reason,'#ff6b6b');}
+  document.getElementById('sP').textContent=score.p;
+  document.getElementById('sA').textContent=score.a;
+  if((score.p>=11||score.a>=11)&&Math.abs(score.p-score.a)>=2){
+    setTimeout(()=>{
+      setMsg(score.p>score.a?'🏆 YOU WIN THE GAME!':'AI WINS – rematch?',score.p>score.a?'#6ddc5a':'#ff6b6b');
+      gs='idle'; showServe();
+    },1800);
+  } else {
+    setTimeout(resetPoint,2000);
+  }
+}
+function resetPoint(){
+  pl.x=130; ai.x=LW-130;
+  Object.assign(ball,{x:130,y:GY-70,vx:0,vy:0,spin:0,inPlay:false,hitter:'none',bounces:0});
+  ai.hit=false; ai.timer=0; rally=0;
+  plCanEnterNVZ=false; aiCanEnterNVZ=false; netFault=false;
+  aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
+  lastShotType=''; consecutiveSameShots=0;
+  gs='idle'; showServe(); setMsg('Press SERVE','#888');
+}
+function showServe(){
+  document.getElementById('serveBtn').style.display='flex';
+  document.getElementById('shotbtns').style.display='none';
+  disableAll();
+}
+
+// ── Update loop ───────────────────────────────────────────────────────
+function update(){
+  if(gs!=='rally') return;
+
+  // ── Predict landing spot for anticipatory movement ──────────────────
+  const landX = ball.inPlay ? predictLanding() : ball.x;
+
+  // ── Player movement (anticipate + NVZ gate) ─────────────────────────
+  const plNVZLimit = plCanEnterNVZ ? NET_X-2 : LKE-2;
+  if(ball.hitter==='ai'){
+    // Move toward predicted landing, not raw ball.x
+    const target = clamp(landX, LB+10, plNVZLimit);
+    pl.x += (target - pl.x) * 0.09;
+  } else {
+    // Ball is on our side or we just hit – retreat to ready position
+    const ready = clamp(140, LB+8, plNVZLimit);
+    pl.x += (ready - pl.x) * 0.04;
+  }
+  pl.x = clamp(pl.x, LB+8, plNVZLimit);
+
+  // ── AI movement (anticipate + NVZ gate) ────────────────────────────
+  const aiNVZLimit = aiCanEnterNVZ ? NET_X+2 : RKS+2;
+  if(ball.hitter==='player'){
+    const target = clamp(landX, aiNVZLimit, RB-8);
+    const diff = target - ai.x;
+    ai.x += Math.sign(diff) * Math.min(Math.abs(diff) * 0.12, ai.spd);
+  } else {
+    const ready = clamp(LW-140, aiNVZLimit, RB-8);
+    ai.x += (ready - ai.x) * 0.04;
+  }
+  ai.x = clamp(ai.x, aiNVZLimit, RB-8);
+
+  if(plHitAnim>0) plHitAnim--;
+  if(aiHitAnim>0) aiHitAnim--;
+  if(splitStepGlow>0){ splitStepGlow--; if(splitStepGlow===0) splitStepBoost=false; }
+
+  // ── Ball physics ────────────────────────────────────────────────────
+  ball.vy += G;
+  // Topspin: extra downward acceleration once ball has crossed to opponent's side
+  if(ball.spin > 0 && ball.x > NET_X) ball.vy += ball.spin;
+  ball.x += ball.vx; ball.y += ball.vy;
+
+  // ── RULE 2: Net collision — last hitter loses ──────────────────────
+  if(ball.x>NET_X-6&&ball.x<NET_X+6&&ball.y>NET_TOP){
+    for(let i=0;i<5;i++) addFx(NET_X+rnd(-10,10), NET_TOP+rnd(0,30),'#ff4444');
+    endPoint(ball.hitter==='player'?'ai':'player',
+             ball.hitter==='player'?'Your shot hit the net!':'AI hit the net!');
+    return;
+  }
+
+  // ── RULE 3 + lateral OOB ───────────────────────────────────────────
+  // Ball exits the court boundaries (past baselines)
+  if(ball.x < LB-5 || ball.x > RB+5){
+    if(ball.bounces === 0){
+      // Never touched ground — hitter hit it out → hitter's opponent scores
+      endPoint(ball.hitter==='ai'?'player':'ai',
+               ball.hitter==='ai'?'AI hit it out!':'Your shot went out!');
+    } else {
+      // Ball bounced then ran out — whoever's side it exited from failed to return
+      // x<LB = exited player's side, x>RB = exited AI's side
+      endPoint(ball.x < LB ? 'ai' : 'player',
+               ball.x < LB ? 'Ball ran out your side!' : 'Ball ran out AI\'s side!');
+    }
+    return;
+  }
+
+  // ── Ground bounce ──────────────────────────────────────────────────
+  if(ball.y>=GY-BALL_R){
+    ball.y=GY-BALL_R;
+    ball.vy=-ball.vy*0.60;
+    ball.vx*=0.88;
+    ball.bounces++;
+
+    // Unlock NVZ entry if ball bounced inside it
+    if(ball.x>=LKE&&ball.x<=NET_X) plCanEnterNVZ=true;
+    if(ball.x>=NET_X&&ball.x<=RKS) aiCanEnterNVZ=true;
+
+    // ── RULE 1: ball landed on opponent's side ──────────────────────
+    if(ball.x > NET_X && ball.hitter==='player'){
+      if(ball.bounces>=2){ endPoint('player','AI failed to return!'); return; }
+      if(!ai.hit) ai.timer=Math.min(ai.timer,12);
+      // Two-bounce: serve must bounce on AI side before AI can return
+      if(serveRally && rally===0 && ball.bounces===1) ai.timer=Math.max(ai.timer,2); // let it register
+    }
+    if(ball.x < NET_X && ball.hitter==='ai'){
+      if(ball.bounces>=2){ endPoint('ai','You failed to return!'); return; }
+      // Two-bounce: AI return of serve must bounce before player can hit
+      if(serveRally && rally===1 && ball.bounces===1) serveRally=false; // both sides bounced, rule satisfied
+    }
+
+    // Ball dead (rolled to a stop) — side it's on failed
+    if(Math.abs(ball.vx)<0.4&&Math.abs(ball.vy)<1.2){
+      endPoint(ball.x > NET_X ? 'player' : 'ai', 'Ball died!');
+      return;
+    }
+  }
+
+  // AI decision tick (every frame, ball on AI side)
+  if(ball.hitter==='player'&&!ai.hit&&ball.x>NET_X){
+    const aiPX = ai.x - PADDLE_DX;
+    const eliteVolley = diff===DIFFICULTIES[4] && ball.y<NET_TOP && Math.abs(ball.x-aiPX)<REACH;
+    const mustBounce = serveRally && rally===0 && ball.bounces===0;
+    if(ai.timer<=0){
+      if(!mustBounce && (eliteVolley || ball.bounces>0 || Math.random()>diff.bounceWait)){
+        // Check if AI can actually reach and return this ball
+        const isServeReturn = serveRally && rally === 0;
+        const bypassChance = isServeReturn ? 1.0 : consecutiveSameShots >= 2 ? 0.90 : 0.50;
+        if(Math.random() < bypassChance || Math.random() < aiReturnProb()){
+          aiHit();
+        } else {
+          // AI misses — mark as hit so we don't retry, ball continues to ground
+          ai.hit=true;
+        }
+      } else {
+        ai.timer=3;
+      }
+    } else {
+      ai.timer--;
+    }
+  }
+
+  updateUI();
+}
+
+// ── UI ────────────────────────────────────────────────────────────────
+function disableAll(){
+  ['bDrive','bLob','bDink','bDrop','bSplit'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.classList.add('inactive');
+  });
+  document.getElementById('tfillfull').style.width='0%';
+}
+function updateUI(){
+  const canHit=gs==='rally'&&ball.hitter!=='player'&&ball.bounces<2;
+  const close=distToBall()<REACH;
+  const nvz=inNVZ(pl.x) && !plCanEnterNVZ;
+  const base=canHit&&close&&!nvz;
+  const canSplit=gs==='rally'&&ball.hitter==='player'&&ball.x>NET_X;
+  const inWindow=canSplit && ai.timer>0 && ai.timer<28;
+  const bSplitEl=document.getElementById('bSplit');
+  bSplitEl.classList.toggle('inactive', !canSplit);
+  if(inWindow){
+    const pulse=0.5+0.5*Math.sin(Date.now()*0.018);
+    bSplitEl.style.borderColor='#ffe066';
+    bSplitEl.style.color='#ffe066';
+    bSplitEl.style.boxShadow=`0 0 ${6+pulse*10}px 2px rgba(255,224,102,0.7)`;
+    bSplitEl.style.background=`rgba(255,224,102,${0.06+pulse*0.08})`;
+  } else {
+    bSplitEl.style.borderColor='';
+    bSplitEl.style.color='';
+    bSplitEl.style.boxShadow='';
+    bSplitEl.style.background='';
+  }
+
+  document.getElementById('bDrive').classList.toggle('inactive',!base);
+  document.getElementById('bLob')  .classList.toggle('inactive',!base);
+  document.getElementById('bDink') .classList.toggle('inactive',!base);
+  document.getElementById('bDrop') .classList.toggle('inactive',!base);
+
+  const tf=document.getElementById('tfillfull');
+  const tbarEl=document.getElementById('tbarfull');
+  if(canHit&&close&&!nvz){
+    const q=timingQ();
+    tf.style.width=(q*100)+'%';
+    const col=q>0.75?'#6ddc5a':q>0.5?'#ffcc44':'#ff6b35';
+    tf.style.background=col;
+    // Glow effect when split step boost is active
+    if(splitStepBoost){
+      const pulse=0.6+0.4*Math.sin(splitStepGlow*0.25); // pulsing glow
+      tbarEl.style.boxShadow=`0 0 ${8+pulse*10}px 3px #ffe066, 0 0 3px 1px #ffe066`;
+      tbarEl.style.border='1px solid rgba(255,224,102,0.7)';
+      tf.style.background='#ffe066';
+    } else {
+      tbarEl.style.boxShadow='none';
+      tbarEl.style.border='none';
+      tf.style.background=col;
+    }
+  } else {
+    tf.style.width='0%';
+    tbarEl.style.boxShadow= splitStepBoost
+      ? `0 0 ${8+4*Math.sin(splitStepGlow*0.25)}px 2px #ffe066`
+      : 'none';
+    tbarEl.style.border= splitStepBoost ? '1px solid rgba(255,224,102,0.5)' : 'none';
+  }
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────
+function drawCourt(){
+  const sky=cx.createLinearGradient(0,0,0,GY);
+  sky.addColorStop(0,'#111e2a');sky.addColorStop(1,'#1a3428');
+  cx.fillStyle=sky;cx.fillRect(0,0,LW,LH);
+
+  const fl=cx.createLinearGradient(0,GY,0,LH);
+  fl.addColorStop(0,'#1e7a3f');fl.addColorStop(1,'#165a2e');
+  cx.fillStyle=fl;cx.fillRect(0,GY,LW,LH-GY);
+
+  // Baseline
+  cx.strokeStyle='rgba(255,255,255,0.5)';cx.lineWidth=2;
+  cx.beginPath();cx.moveTo(LB,GY);cx.lineTo(RB,GY);cx.stroke();
+  cx.strokeStyle='rgba(255,255,255,0.7)';cx.lineWidth=3;
+  [LB,RB].forEach(x=>{cx.beginPath();cx.moveTo(x,GY-12);cx.lineTo(x,GY+2);cx.stroke();});
+
+  // NVZ
+  cx.fillStyle='rgba(255,210,60,0.08)';
+  cx.fillRect(LKE,GY-NET_H-6,KW,NET_H+6);
+  cx.fillRect(NET_X,GY-NET_H-6,KW,NET_H+6);
+  cx.strokeStyle='rgba(255,200,50,0.38)';cx.lineWidth=1.5;cx.setLineDash([4,6]);
+  [LKE,RKS].forEach(x=>{cx.beginPath();cx.moveTo(x,GY-NET_H);cx.lineTo(x,GY);cx.stroke();});
+  cx.setLineDash([]);
+  cx.fillStyle='rgba(255,200,50,0.3)';cx.font='10px DM Sans';cx.textAlign='center';
+  cx.fillText('NVZ',LKE+KW/2,GY-14);cx.fillText('NVZ',NET_X+KW/2,GY-14);
+
+  // Net
+  cx.fillStyle='#8a7050';
+  cx.fillRect(NET_X-5,NET_TOP-8,5,GY-NET_TOP+8);
+  cx.fillRect(NET_X,NET_TOP-8,5,GY-NET_TOP+8);
+  cx.fillStyle='#d4b882';cx.fillRect(NET_X-5,NET_TOP-8,10,6);
+  cx.strokeStyle='rgba(200,175,130,0.38)';cx.lineWidth=0.8;
+  for(let y=NET_TOP;y<GY;y+=11){cx.beginPath();cx.moveTo(NET_X-4,y);cx.lineTo(NET_X+4,y);cx.stroke();}
+  for(let x=NET_X-4;x<=NET_X+4;x+=2){cx.beginPath();cx.moveTo(x,NET_TOP);cx.lineTo(x,GY);cx.stroke();}
+}
+
+function drawPlayer(x,y,col,right){
+  const d=right?1:-1;
+  cx.save();
+  // Shadow
+  cx.fillStyle='rgba(0,0,0,0.22)';
+  cx.beginPath();cx.ellipse(x,y+3,20,6,0,0,Math.PI*2);cx.fill();
+  // Legs
+  cx.strokeStyle=col;cx.lineWidth=7;cx.lineCap='round';
+  cx.beginPath();cx.moveTo(x-5,y-50);cx.lineTo(x-11,y);cx.stroke();
+  cx.beginPath();cx.moveTo(x+5,y-50);cx.lineTo(x+11,y);cx.stroke();
+  // Body
+  cx.lineWidth=8;cx.beginPath();cx.moveTo(x,y-50);cx.lineTo(x,y-105);cx.stroke();
+
+  // ── Paddle arm + paddle (animated for player) ──────────────────────
+  const ANIM_FRAMES = 22;
+  const shoulderX = x+d*6, shoulderY = y-95;
+
+  let elbowX, elbowY, paddleX2, paddleY2, paddleRot;
+
+  if(right && plHitAnim>0){
+    // ── Player swing ──
+    const raw = plHitAnim / ANIM_FRAMES;
+    const t = raw>0.5 ? (raw-0.5)*2 : raw*2;
+    const phase = plHitAnim > ANIM_FRAMES*0.5 ? 'swing' : 'recover';
+    const contactX = clamp(ball.x, x+20, x+PADDLE_DX+25);
+    const contactY = clamp(plHitContactY, y-120, y-20);
+    if(phase==='swing'){
+      const sw = (plHitAnim - ANIM_FRAMES*0.5) / (ANIM_FRAMES*0.5);
+      elbowX = x + d*6  + (contactX - (x+d*6))  * (1-sw) * 0.55;
+      elbowY = shoulderY + (contactY - shoulderY) * (1-sw) * 0.45;
+      paddleX2 = x + d*6 + (contactX - (x+d*6)) * (1-sw);
+      paddleY2 = shoulderY + (contactY - shoulderY) * (1-sw);
+      paddleRot = d * (-0.38 + (1-sw)*0.5);
+    } else {
+      const rc = plHitAnim / (ANIM_FRAMES*0.5);
+      elbowX = x + d*PADDLE_DX*0.6 + (x+d*6 - x+d*PADDLE_DX*0.6) * (1-rc);
+      elbowY = y-83 + (shoulderY-y+83) * (1-rc)*0.5;
+      paddleX2 = x + d*PADDLE_DX + (x+d*6 - x-d*PADDLE_DX) * (1-rc)*0.4;
+      paddleY2 = y-72 + (shoulderY - y+72) * (1-rc)*0.3;
+      paddleRot = d * -0.38;
+    }
+  } else if(!right && aiHitAnim>0){
+    // ── AI swing (mirrors player, paddle extends toward net = left) ──
+    const ANIM_FRAMES = 22;
+    const raw = aiHitAnim / ANIM_FRAMES;
+    const phase = aiHitAnim > ANIM_FRAMES*0.5 ? 'swing' : 'recover';
+    const contactX = clamp(ball.x, x-PADDLE_DX-25, x-20);
+    const contactY = clamp(aiHitContactY, y-120, y-20);
+    if(phase==='swing'){
+      const sw = (aiHitAnim - ANIM_FRAMES*0.5) / (ANIM_FRAMES*0.5);
+      elbowX = x + d*6  + (contactX - (x+d*6))  * (1-sw) * 0.55;
+      elbowY = shoulderY + (contactY - shoulderY) * (1-sw) * 0.45;
+      paddleX2 = x + d*6 + (contactX - (x+d*6)) * (1-sw);
+      paddleY2 = shoulderY + (contactY - shoulderY) * (1-sw);
+      paddleRot = d * (-0.38 + (1-sw)*0.5);
+    } else {
+      const rc = aiHitAnim / (ANIM_FRAMES*0.5);
+      elbowX = x + d*PADDLE_DX*0.6 + (x+d*6 - x+d*PADDLE_DX*0.6) * (1-rc);
+      elbowY = y-83 + (shoulderY-y+83) * (1-rc)*0.5;
+      paddleX2 = x + d*PADDLE_DX + (x+d*6 - x-d*PADDLE_DX) * (1-rc)*0.4;
+      paddleY2 = y-72 + (shoulderY - y+72) * (1-rc)*0.3;
+      paddleRot = d * -0.38;
+    }
+  } else {
+    // Idle pose
+    elbowX = x+d*PADDLE_DX; elbowY = y-72;
+    paddleX2 = x+d*PADDLE_DX; paddleY2 = y-70;
+    paddleRot = d*-0.38;
+  }
+
+  // Draw arm
+  cx.strokeStyle=col;cx.lineWidth=7;cx.lineCap='round';
+  cx.beginPath();cx.moveTo(shoulderX,shoulderY);cx.lineTo(elbowX,elbowY);cx.stroke();
+  // Draw paddle
+  cx.save();cx.translate(paddleX2, paddleY2);cx.rotate(paddleRot);
+  cx.fillStyle=right?'#4db8ff':'#ff7070';
+  cx.strokeStyle='rgba(255,255,255,0.6)';cx.lineWidth=2;
+  cx.beginPath();
+  const pr=4,px=-7,py=-17,pw=14,ph=28;
+  cx.moveTo(px+pr,py);cx.lineTo(px+pw-pr,py);cx.arcTo(px+pw,py,px+pw,py+pr,pr);
+  cx.lineTo(px+pw,py+ph-pr);cx.arcTo(px+pw,py+ph,px+pw-pr,py+ph,pr);
+  cx.lineTo(px+pr,py+ph);cx.arcTo(px,py+ph,px,py+ph-pr,pr);
+  cx.lineTo(px,py+pr);cx.arcTo(px,py,px+pr,py,pr);cx.closePath();
+  cx.fill();cx.stroke();
+  cx.fillStyle='#8a7050';cx.fillRect(-3,11,6,12);
+  cx.restore();
+
+  // Other arm
+  cx.lineWidth=6;cx.beginPath();cx.moveTo(x-d*6,y-95);cx.lineTo(x-d*22,y-85);cx.stroke();
+  // Head
+  cx.beginPath();cx.arc(x,y-120,16,0,Math.PI*2);
+  cx.fillStyle=right?'#f4c070':'#f09060';cx.fill();
+  cx.fillStyle='rgba(0,0,0,0.45)';
+  cx.beginPath();cx.arc(x+d*5,y-121,2.5,0,Math.PI*2);cx.fill();
+  cx.restore();
+}
+
+function drawBall(){
+  if(!ball.inPlay){
+    cx.globalAlpha=0.4;
+    cx.beginPath();cx.arc(130,GY-70,BALL_R,0,Math.PI*2);
+    cx.fillStyle='#e8e84a';cx.fill();
+    cx.globalAlpha=1;return;
+  }
+  const sh=GY-ball.y;
+  cx.fillStyle=`rgba(0,0,0,${Math.max(0,0.42-sh*0.001).toFixed(2)})`;
+  cx.beginPath();cx.ellipse(ball.x,GY+2,Math.max(3,9-sh*0.018),3,0,0,Math.PI*2);cx.fill();
+  if(Math.abs(ball.vx)>2){
+    const tg=cx.createLinearGradient(ball.x,0,ball.x-ball.vx*3,0);
+    tg.addColorStop(0,'rgba(255,255,180,0.5)');tg.addColorStop(1,'rgba(255,255,180,0)');
+    cx.beginPath();cx.moveTo(ball.x,ball.y);cx.lineTo(ball.x-ball.vx*3.5,ball.y-ball.vy*1.5);
+    cx.strokeStyle=tg;cx.lineWidth=BALL_R*1.4;cx.lineCap='round';cx.stroke();
+  }
+  const bg=cx.createRadialGradient(ball.x-2,ball.y-2,1,ball.x,ball.y,BALL_R);
+  bg.addColorStop(0,'#fff');bg.addColorStop(0.6,'#e8e860');bg.addColorStop(1,'#b8b830');
+  cx.beginPath();cx.arc(ball.x,ball.y,BALL_R,0,Math.PI*2);
+  cx.fillStyle=bg;cx.fill();
+  cx.strokeStyle='rgba(0,0,0,0.15)';cx.lineWidth=1;cx.stroke();
+}
+
+function drawGuide(){
+  if(!ball.inPlay||ball.hitter!=='ai'||Math.abs(ball.vx)<1) return;
+  cx.save();cx.globalAlpha=0.1;cx.strokeStyle='#fff';cx.lineWidth=1.5;cx.setLineDash([4,9]);
+  cx.beginPath();
+  let tx=ball.x,ty=ball.y,tvx=ball.vx,tvy=ball.vy;
+  cx.moveTo(tx,ty);
+  for(let i=0;i<65;i++){
+    tvy+=G;tx+=tvx;ty+=tvy;
+    if(ty>=GY-BALL_R){ty=GY-BALL_R;tvy=-tvy*0.60;tvx*=0.88;}
+    cx.lineTo(tx,ty);
+    if(tx<LB-10||tx>RB+10) break;
+  }
+  cx.stroke();cx.setLineDash([]);cx.restore();
+}
+
+function drawFX(){
+  fx=fx.filter(f=>f.a>0);
+  fx.forEach(f=>{
+    cx.save();cx.globalAlpha=f.a;
+    cx.beginPath();cx.arc(f.x,f.y,f.r,0,Math.PI*2);
+    cx.strokeStyle=f.c;cx.lineWidth=2;cx.stroke();
+    cx.restore();
+    f.r+=2.4;f.a-=f.dr;
+  });
+}
+
+function drawHUD(){
+  if(gs==='rally'&&inNVZ(pl.x)){
+    cx.save();cx.globalAlpha=0.9;cx.fillStyle='#ffcc44';
+    cx.font='bold 11px DM Sans';cx.textAlign='center';
+    cx.fillText('⚠ NVZ – NO SHOTS HERE',pl.x,GY-80);
+    cx.restore();
+  }
+  if(gs==='rally'&&rally>0){
+    cx.save();cx.globalAlpha=0.28;
+    cx.fillStyle='#fff';cx.font='bold 13px DM Sans';cx.textAlign='center';
+    cx.fillText('Rally '+rally,LW/2,20);
+    cx.restore();
+  }
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────
+function loop(){
+  update();
+  cx.clearRect(0,0,LW,LH);
+  drawCourt();
+  drawGuide();
+  drawPlayer(pl.x,pl.y,'#4db8ff',true);
+  drawPlayer(ai.x,ai.y,'#ff7070',false);
+  drawBall();
+  drawFX();
+  drawHUD();
+  requestAnimationFrame(loop);
+}
+
+// ── Input ─────────────────────────────────────────────────────────────
+const btnLastClick = {};
+function throttledClick(id, fn){
+  document.getElementById(id).addEventListener('click', ()=>{
+    const now = Date.now();
+    if(btnLastClick[id] && now - btnLastClick[id] < 300) return; // throttle: same button too fast
+    if(document.getElementById(id).classList.contains('inactive')) return; // visually off — don't record
+    btnLastClick[id] = now; // only stamp when actually firing
+    fn();
+  });
+}
+document.getElementById('serveBtn').addEventListener('click', serve);
+throttledClick('bDrive', ()=>playerHit('drive'));
+throttledClick('bLob',   ()=>playerHit('lob'));
+throttledClick('bDink',  ()=>playerHit('dink'));
+throttledClick('bDrop',  ()=>playerHit('drop'));
+throttledClick('bSplit', splitStep);
+
+document.addEventListener('keydown',e=>{
+  // Prevent arrow keys from scrolling the page
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+
+  if(e.key===' '){
+    if(gs==='idle') serve();
+    else splitStep();
+    return;
+  }
+  if(e.key==='ArrowUp')    playerHit('lob');
+  if(e.key==='ArrowRight') playerHit('drive');
+  if(e.key==='ArrowDown')  playerHit('drop');
+  if(e.key==='ArrowLeft')  playerHit('dink');
+});
+
+// ── Boot ──────────────────────────────────────────────────────────────
+loop();
+</script>
+</body>
+</html>
