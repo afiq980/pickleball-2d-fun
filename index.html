@@ -303,6 +303,7 @@ const REACH   = 70;        // paddle-to-ball reach in px
 const SF      = 1/0.7;     // 30% slower ball
 const MIN_Y   = 8;         // ball must never go above this canvas y
 const PADDLE_DX = 36;      // paddle head is this many px in front of player x
+const MAX_HIT_Y = GY - 200; // ~2 head heights above player's head — max contact height
 
 // ── State ─────────────────────────────────────────────────────────────
 let gs='idle', score={p:0,a:0}, rally=0;
@@ -344,6 +345,7 @@ const DIFFICULTIES = {
   2: { label:'DUPR 3–3.2',  shotWeights:[0.133,0.60,  0.133,0.133], bounceWait:0.75, timerMult:0.85, spd:3.2, lobDriveChance:0.50, volleyDriveChance:0.30, belowNetDriveChance:0.03 },
   3: { label:'DUPR 3.2–3.5',shotWeights:[0.20, 0.40,  0.20, 0.20],  bounceWait:0.40, timerMult:0.70, spd:3.8, lobDriveChance:0.65, volleyDriveChance:0.40, belowNetDriveChance:0.02 },
   4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.50, belowNetDriveChance:0.01 },
+  5: { label:'Elite+',      shotWeights:[0.05, 0.55,  0.25, 0.15],  bounceWait:0.05, timerMult:0.40, spd:5.5, lobDriveChance:1.00, volleyDriveChance:1.00, belowNetDriveChance:0.005 },
 };
 let level = 3; // start at Advanced
 let diff = DIFFICULTIES[level];
@@ -352,7 +354,7 @@ let consecutiveLosses = 0; // for dynamic difficulty
 function adjustDifficulty(playerWon){
   if(playerWon){
     consecutiveLosses = 0;
-    if(level < 4){ level++; diff = DIFFICULTIES[level]; ai.spd = diff.spd; }
+    if(level < 5){ level++; diff = DIFFICULTIES[level]; ai.spd = diff.spd; }
   } else {
     consecutiveLosses++;
     if(consecutiveLosses >= 2){
@@ -528,6 +530,12 @@ const AI_SPEED_PENALTY = 0.25;
 //    e.g. 0.015 → after 20 rallies AI return chance is reduced by 0.30.
 const AI_RALLY_FATIGUE = 0.007;
 
+// Per-difficulty multiplier applied to the raw return probability.
+// Values above 1.0 make the AI more consistent; the result is always clamped to [0, 1].
+// Level 1 (Beginner): raw probability unchanged.
+// Level 5 (Elite+):   raw probability × 1.7 — hard drives and fatigue barely dent it.
+const AI_LEVEL_MULT = { 1: 1.0, 2: 1.15, 3: 1.30, 4: 1.40, 5: 1.50 };
+
 // Returns probability (0–1) that AI successfully returns the ball this decision tick.
 function aiReturnProb(){
   // Factor 1: distance from AI to player's paddle — further = higher chance for AI
@@ -543,7 +551,8 @@ function aiReturnProb(){
   // Factor 3: rally fatigue — longer rallies reduce AI return chance
   const fatigueFactor = Math.max(0, 1 - rally * AI_RALLY_FATIGUE);
 
-  return Math.max(0, Math.min(1, distFactor * speedFactor * fatigueFactor));
+  const raw = distFactor * speedFactor * fatigueFactor;
+  return Math.max(0, Math.min(1, raw * (AI_LEVEL_MULT[level] || 1.0)));
 }
 
 // ── Physics helpers ───────────────────────────────────────────────────
@@ -654,6 +663,7 @@ function playerHit(type){
     if(ball.vx > 0) fb.hitAfterBallPassed = true;
     setMsg('Too far to reach!','#ff6b35');return;
   }
+  if(ball.y < MAX_HIT_Y){setMsg('Ball too high to reach!','#ff6b35');return;}
   if(inNVZ(pl.x) && !plCanEnterNVZ){setMsg('No shots in the NVZ!','#ffcc44');return;}
   // Two-bounce serve rule: player cannot volley AI's return of serve (must let it bounce first)
   if(serveRally && ball.bounces===0){setMsg('Must let it bounce! (serve rule)','#ffcc44');return;}
@@ -817,11 +827,45 @@ function aiHit(){
     return;
   }
 
+  // Elite+ (level 5): ball is below net — drop 40% / dink 40% / lob 20%
+  if(!isServeReturn && !childMode && level === 5 && aiBelowNet){
+    let epV, epT;
+    const epErrorRange = (1 - aiAccuracy) * 120; // same formula as normal non-drive shots
+    const epRoll = Math.random();
+    if(epRoll < 0.40){
+      // Drop — center of player's kitchen, spread by fatigue
+      let epTx = clamp((LKE + NET_X) / 2 + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
+      epT = 70 * SF;
+      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
+      ball.spin = 0.05;
+    } else if(epRoll < 0.80){
+      // Dink — tight to near side of player's kitchen, spread by fatigue
+      let epTx = clamp(rnd(LKE+8, NET_X-8) + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
+      epT = 75 * SF;
+      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
+      ball.spin = 0.10;
+    } else {
+      // Lob — deep to player's back court, spread by fatigue
+      let epTx = clamp(rnd(LB+15, LB+55) + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
+      epT = 110 * SF;
+      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
+      ball.spin = 0.06;
+    }
+    ball.vx = epV.vx; ball.vy = epV.vy;
+    ball.hitter='ai'; ball.bounces=0;
+    aiLastShotWasDrive = false;
+    aiHitAnim=22; aiHitContactY=ball.y;
+    plCanEnterNVZ=false;
+    addFx(ball.x, ball.y, '#ff9090'); playHitSound();
+    updateUI();
+    return;
+  }
+
   // Elite AI (3.5+): drive if ball is above net height and AI paddle is close
   const aiPaddleX = ai.x - PADDLE_DX;
   const nearBall = Math.abs(ball.x - aiPaddleX) < REACH;
   const ballAboveNet = ball.y < NET_TOP;
-  const eliteDrive = !childMode && diff === DIFFICULTIES[4] && ballAboveNet && nearBall;
+  const eliteDrive = !childMode && (diff === DIFFICULTIES[4] || diff === DIFFICULTIES[5]) && ballAboveNet && nearBall;
 
   // ── Opportunistic drive checks (supersede normal shot weights) ────────
   const peakAboveNet = ballPeakY() < NET_TOP;
@@ -848,6 +892,7 @@ function aiHit(){
     let driveQ = 0; // default: no quality boost
     if(level===3) driveQ = Math.random()<0.50 ? 1.0 : 0.75;
     else if(level===4) driveQ = Math.random()<0.75 ? 1.0 : 0.75;
+    else if(level===5) driveQ = 1.0; // always perfect
     if(driveQ >= 1.0){
       // Perfect: tight target, fastest T
       tx = rnd(LB+25, LKE-15); T = 14*SF;
@@ -1075,10 +1120,12 @@ function update(){
   // AI decision tick (every frame, ball on AI side)
   if(ball.hitter==='player'&&!ai.hit&&ball.x>NET_X){
     const aiPX = ai.x - PADDLE_DX;
-    const eliteVolley = diff===DIFFICULTIES[4] && ball.y<NET_TOP && Math.abs(ball.x-aiPX)<REACH;
+    const eliteVolley = (diff===DIFFICULTIES[4] || diff===DIFFICULTIES[5]) && ball.y<NET_TOP && Math.abs(ball.x-aiPX)<REACH;
     const mustBounce = serveRally && rally===0 && ball.bounces===0;
     if(ai.timer<=0){
-      if(!mustBounce && (eliteVolley || ball.bounces>0 || Math.random()>diff.bounceWait)){
+      // Ball still too high — wait for it to descend to a hittable height
+      if(ball.y < MAX_HIT_Y){ ai.timer=3; }
+      else if(!mustBounce && (eliteVolley || ball.bounces>0 || Math.random()>diff.bounceWait)){
         // Check if AI can actually reach and return this ball
         const isServeReturn = serveRally && rally === 0;
         const bypassChance = isServeReturn ? 1.0 : consecutiveSameShots >= 2 ? 0.90 : 0.50;
