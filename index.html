@@ -172,12 +172,31 @@ kbd{
   margin-bottom:5px;
 }
 
-/* ── Difficulty select overlay ── */</style>
+/* ── Difficulty select overlay ── */
+/* ── Child Mode button ── */
+#childModeBtn{
+  position:fixed;top:12px;right:12px;z-index:210;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.5px;
+  padding:7px 12px;border-radius:20px;
+  border:1.5px solid #445;color:#556;background:rgba(0,0,0,0.5);
+  cursor:pointer;transition:all .18s;
+}
+#childModeBtn.on{border-color:#ffcc44;color:#ffcc44;background:rgba(255,204,68,0.1);}
+#childModeBtn:active{transform:scale(0.94);}
+/* Child mode indicator during game */
+#childModeBadge{
+  display:none;position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:50;
+  font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;
+  padding:4px 12px;border-radius:20px;
+  border:1px solid #ffcc44;color:#ffcc44;background:rgba(255,204,68,0.1);
+  pointer-events:none;
+}</style>
 </head>
 <body>
 <div id="tutScreen">
   <h2>🏓 PICKLEBALL</h2>
   <p class="sub">How to play — scroll to read all tips</p>
+  <button id="childModeBtn" onclick="toggleChildMode()">👶 Child Mode</button>
   <div id="tutList">
     <div class="tutCard">
       <div class="tutCardTop"><div class="tutIcon">🎯</div><div class="tutTitle">Timing is Everything</div></div>
@@ -206,6 +225,7 @@ kbd{
   </div>
 </div>
 <button id="tutEndBtn" onclick="endTutorial()">START GAME</button>
+<div id="childModeBadge">👶 CHILD MODE</div>
 <div id="wrap">
   <div id="topbar">
     <h1>🏓 PICKLEBALL</h1>
@@ -359,6 +379,39 @@ function toggleMute(){
   btn.classList.toggle('muted', !soundOn);
 }
 
+// ── Child Mode ────────────────────────────────────────────────────────
+let childMode = false;
+let childHitPending = false; // armed when child taps anywhere
+
+function toggleChildMode(){
+  childMode = !childMode;
+  const btn = document.getElementById('childModeBtn');
+  btn.classList.toggle('on', childMode);
+  btn.textContent = childMode ? '👶 Child Mode: ON' : '👶 Child Mode';
+  document.getElementById('childModeBadge').style.display = childMode ? 'block' : 'none';
+}
+
+function childModeTap(){
+  if(!childMode) return;
+  if(gs !== 'rally') return;
+  if(ball.hitter === 'player') return; // don't arm if player already last hit
+  childHitPending = true; // arm — will fire when ball reaches paddle
+}
+
+// Called every frame from update() — fires queued auto-hit when ball is reachable
+function childModeTickHit(){
+  if(!childMode || !childHitPending) return;
+  if(gs !== 'rally') return;
+  if(ball.hitter === 'player') { childHitPending = false; return; }
+  if(distToBall() > REACH) return; // not close enough yet — keep waiting
+  // Ball is within reach — fire!
+  childHitPending = false;
+  const choices = ['drop','lob'];
+  if(ball.y < NET_TOP) choices.push('drive');
+  const shot = choices[Math.floor(Math.random()*choices.length)];
+  playerHit(shot);
+}
+
 
 function endTutorial(){
   document.getElementById('tutScreen').style.display='none';
@@ -461,7 +514,23 @@ function ballCanVolleyAboveNet(){
 }
 // Paddle world x (player faces right, paddle extends forward)
 function paddleX(){ return pl.x + PADDLE_DX; }
-function distToBall(){ return Math.abs(ball.x - paddleX()); }
+
+// CCD-aware distance: minimum distance ball swept through paddle zone this/last frame
+function distToBall(){
+  const px = paddleX();
+  const cur = Math.abs(ball.x - px);
+  // If ball was moving toward player last frame, also check prev position
+  if(ball.prevX !== undefined){
+    const prev = Math.abs(ball.prevX - px);
+    // If ball crossed paddle x between frames, interpolate closest approach
+    if((ball.prevX - px) * (ball.x - px) <= 0){
+      return 0; // swept through — treat as zero distance
+    }
+    return Math.min(cur, prev);
+  }
+  return cur;
+}
+
 function timingQ(){
   const d=distToBall();
   let q;
@@ -502,7 +571,7 @@ function playerHit(type){
     setMsg('Too far to reach!','#ff6b35');return;
   }
   if(inNVZ(pl.x) && !plCanEnterNVZ){setMsg('No shots in the NVZ!','#ffcc44');return;}
-  // Two-bounce serve rule: player cannot volley the AI's return of serve
+  // Two-bounce serve rule: player cannot volley AI's return of serve (must let it bounce first)
   if(serveRally && ball.bounces===0){setMsg('Must let it bounce! (serve rule)','#ffcc44');return;}
 
   const q=timingQ();
@@ -624,6 +693,8 @@ function playerHit(type){
   }
   setMsg(type.toUpperCase()+' – '+ql,qc);
   addFx(ball.x,ball.y,qc); playHitSound();
+  // Double-bounce rule fulfilled — player has now let AI's return bounce and hit it back
+  if(serveRally) serveRally=false;
   rally++;
   updateUI();
 }
@@ -804,11 +875,12 @@ function showFeedback(){
 }
 function resetPoint(){
   pl.x=130; ai.x=LW-130;
-  Object.assign(ball,{x:130,y:GY-70,vx:0,vy:0,spin:0,inPlay:false,hitter:'none',bounces:0});
+  Object.assign(ball,{x:130,y:GY-70,vx:0,vy:0,spin:0,inPlay:false,hitter:'none',bounces:0,prevX:130,prevY:GY-70});
   ai.hit=false; ai.timer=0; rally=0;
   plCanEnterNVZ=false; aiCanEnterNVZ=false; netFault=false;
   aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
   lastShotType=''; consecutiveSameShots=0; aiLastShotWasDrive=false;
+  childHitPending=false;
   fb = {droveBelowNet:false, failedReturnDrive:false, lobFromBackCount:0, dinkFromBack:false, hitAfterBallPassed:false};
   gs='idle'; showServe(); setMsg('Press SERVE','#888');
 }
@@ -822,7 +894,8 @@ function showServe(){
 function update(){
   if(gs!=='rally') return;
 
-  // ── Predict landing spot for anticipatory movement ──────────────────
+  // ── Child mode auto-hit tick ─────────────────────────────────────────
+  childModeTickHit();
   const landX = ball.inPlay ? predictLanding() : ball.x;
 
   // ── Player movement (anticipate + NVZ gate) ─────────────────────────
@@ -858,6 +931,7 @@ function update(){
   ball.vy += G;
   // Topspin: extra downward acceleration once ball has crossed to opponent's side
   if(ball.spin > 0 && ball.x > NET_X) ball.vy += ball.spin;
+  ball.prevX = ball.x; ball.prevY = ball.y;
   ball.x += ball.vx; ball.y += ball.vy;
 
   // ── RULE 2: Net collision — last hitter loses ──────────────────────
@@ -907,8 +981,6 @@ function update(){
         if(aiLastShotWasDrive) fb.failedReturnDrive = true;
         endPoint('ai','You failed to return!'); return;
       }
-      // Two-bounce: AI return of serve must bounce before player can hit
-      if(serveRally && rally===1 && ball.bounces===1) serveRally=false; // both sides bounced, rule satisfied
     }
 
     // Ball dead (rolled to a stop) — side it's on failed
@@ -1235,6 +1307,10 @@ throttledClick('bLob',   ()=>playerHit('lob'));
 throttledClick('bDink',  ()=>playerHit('dink'));
 throttledClick('bDrop',  ()=>playerHit('drop'));
 throttledClick('bSplit', splitStep);
+
+// Child mode: tap anywhere on the game area to queue auto-hit
+document.getElementById('wrap').addEventListener('click', ()=>childModeTap());
+document.getElementById('wrap').addEventListener('touchstart', ()=>childModeTap(), {passive:true});
 
 document.addEventListener('keydown',e=>{
   // Prevent arrow keys from scrolling the page
