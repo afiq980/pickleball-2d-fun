@@ -78,22 +78,21 @@ canvas{display:block;width:100%;height:auto;border-radius:6px;border:1px solid r
 #bDrop {grid-column:2;grid-row:3;}
 .sBtn{
   font-family:'Bebas Neue',cursive;
-  font-size:clamp(12px,3.5vw,20px);letter-spacing:1.5px;
+  font-size:clamp(16px,4.5vw,26px);letter-spacing:1.5px;
   border:2px solid;border-radius:10px;
   cursor:pointer;background:transparent;
   transition:all .12s;display:flex;flex-direction:column;align-items:center;justify-content:center;
   touch-action:manipulation;
   width:100%;height:100%;padding:0;
 }
-.sBtn span{font-family:'DM Sans',sans-serif;font-size:clamp(8px,1.8vw,11px);letter-spacing:0;color:inherit;opacity:.6;margin-top:3px;font-weight:600;text-align:center;line-height:1.2;}
+.sBtn span{font-family:'DM Sans',sans-serif;font-size:clamp(9px,2vw,12px);letter-spacing:0;color:inherit;opacity:.6;margin-top:3px;font-weight:600;text-align:center;line-height:1.2;}
 .sBtn:not(.inactive):active{transform:scale(0.93);background:rgba(255,255,255,0.05)}
 .sBtn.inactive{opacity:.18;cursor:not-allowed}
 #bDrive{border-color:#ff6b35;color:#ff6b35}
 #bLob  {border-color:#6ddc5a;color:#6ddc5a}
 #bDink {border-color:#4db8ff;color:#4db8ff}
 #bDrop {border-color:#ffcc44;color:#ffcc44}
-#bSplit{border-color:#445;color:#667;font-size:clamp(9px,2vw,13px);}
-#keys{font-size:9px;color:#334;letter-spacing:1px;text-align:center;flex-shrink:0;padding:2px 0;}
+#bSplit{border-color:#445;color:#667;font-size:clamp(12px,2.8vw,17px);}
 #muteBtn{
   position:fixed;bottom:10px;right:10px;z-index:50;
   font-family:'Bebas Neue',cursive;font-size:12px;letter-spacing:1px;
@@ -156,32 +155,24 @@ kbd{
   text-align:center;
 }
 #tutEndBtn:active{background:rgba(109,220,90,.15);}
-/* ── Difficulty select overlay ── */
-#diffScreen{
-  position:fixed;inset:0;background:#0b1820;z-index:100;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  padding:24px 16px;gap:18px;
-}
-#diffScreen h2{
-  font-family:'Bebas Neue',cursive;font-size:clamp(22px,6vw,38px);
-  letter-spacing:5px;color:#6ddc5a;text-shadow:0 0 20px rgba(109,220,90,.4);
+/* ── Feedback box ── */
+#feedbackBox{
+  display:none;
+  width:100%;
+  padding:9px 14px;
+  background:rgba(255,204,68,0.08);
+  border:1px solid rgba(255,204,68,0.35);
+  border-radius:8px;
+  font-family:'DM Sans',sans-serif;
+  font-size:clamp(11px,2.5vw,13px);
+  color:#ffcc44;
+  line-height:1.5;
   text-align:center;
+  flex-shrink:0;
+  margin-bottom:5px;
 }
-#diffScreen p{font-size:clamp(11px,2.5vw,13px);color:#778;letter-spacing:.3px;text-align:center;}
-#diffBtns{display:flex;flex-direction:column;gap:10px;width:100%;max-width:420px;}
-.diffBtn{
-  font-family:'Bebas Neue',cursive;font-size:clamp(14px,3.5vw,20px);letter-spacing:2px;
-  padding:14px 20px 11px;border:2px solid;border-radius:8px;
-  cursor:pointer;background:transparent;text-align:left;
-  transition:all .15s;display:flex;justify-content:space-between;align-items:baseline;
-}
-.diffBtn span{font-family:'DM Sans',sans-serif;font-size:clamp(9px,2vw,11px);letter-spacing:0;opacity:.65;font-weight:600;}
-.diffBtn:active{transform:scale(.97);}
-.d1{border-color:#6ddc5a;color:#6ddc5a;} .d1:hover{background:rgba(109,220,90,.1);}
-.d2{border-color:#4db8ff;color:#4db8ff;} .d2:hover{background:rgba(77,184,255,.1);}
-.d3{border-color:#ffcc44;color:#ffcc44;} .d3:hover{background:rgba(255,204,68,.1);}
-.d4{border-color:#ff6b35;color:#ff6b35;} .d4:hover{background:rgba(255,107,53,.1);}
-</style>
+
+/* ── Difficulty select overlay ── */</style>
 </head>
 <body>
 <div id="tutScreen">
@@ -215,28 +206,6 @@ kbd{
   </div>
 </div>
 <button id="tutEndBtn" onclick="endTutorial()">START GAME</button>
-<div id="diffScreen" style="display:none;">
-  <h2>🏓 PICKLEBALL</h2>
-  <p>Select opponent difficulty</p>
-  <div id="diffBtns">
-    <button class="diffBtn d1" onclick="startGame(1)">
-      DUPR ≤ 3.0 — Beginner
-      <span>Lob-heavy · waits for bounce</span>
-    </button>
-    <button class="diffBtn d2" onclick="startGame(2)">
-      DUPR 3.0 – 3.2 — Intermediate
-      <span>Drive-heavy · waits for bounce</span>
-    </button>
-    <button class="diffBtn d3" onclick="startGame(3)">
-      DUPR 3.2 – 3.5 — Advanced
-      <span>Drive + dink mix · reads ball</span>
-    </button>
-    <button class="diffBtn d4" onclick="startGame(4)">
-      DUPR 3.5+ — Elite
-      <span>Dink-dominant · volleys aggressively</span>
-    </button>
-  </div>
-</div>
 <div id="wrap">
   <div id="topbar">
     <h1>🏓 PICKLEBALL</h1>
@@ -252,13 +221,14 @@ kbd{
   <canvas id="c"></canvas>
 
   <div id="bottom">
-    <div id="msgbar">Select difficulty to start</div>
+    <div id="msgbar">Press SERVE to start</div>
     <div id="timingrow">
       <div id="timingbarwrap">
         <div id="timingbarlabel">TIMING</div>
         <div id="tbarfull"><div id="tfillfull"></div></div>
       </div>
     </div>
+    <div id="feedbackBox"></div>
     <div id="dpadarea">
       <button id="serveBtn">SERVE<kbd>Space</kbd></button>
       <div id="shotbtns">
@@ -269,7 +239,6 @@ kbd{
         <button class="sBtn inactive" id="bDrop" >DROP<span>↓ Kitchen</span><kbd>↓</kbd></button>
       </div>
     </div>
-    <div id="keys">Space=Serve/Split · ↑ Lob · → Drive · ↓ Drop · ← Dink</div>
   </div>
 </div>
 <button id="muteBtn" onclick="toggleMute()">🔊 SFX</button>
@@ -322,6 +291,15 @@ let aiHitAnim=0;
 let aiHitContactY=GY-70;
 let lastShotType='';
 let consecutiveSameShots=0;
+let aiLastShotWasDrive=false;
+// ── Feedback tracking ─────────────────────────────────────────────────
+let fb = {
+  droveBelowNet: false,       // player drove when ball below net
+  failedReturnDrive: false,   // player failed to return an AI drive
+  lobFromBackCount: 0,        // times player lobbed from back 50% of court
+  dinkFromBack: false,        // player dinked from back of court
+  hitAfterBallPassed: false,  // player tried to hit after ball already passed
+};
 let aiAccuracy=1.0;
 let splitStepBoost=false;
 let splitStepGlow=0;
@@ -339,10 +317,29 @@ const DIFFICULTIES = {
   3: { label:'DUPR 3.2–3.5',shotWeights:[0.20, 0.40,  0.20, 0.20],  bounceWait:0.40, timerMult:0.70, spd:3.8, lobDriveChance:0.65, volleyDriveChance:0.40, belowNetDriveChance:0.02 },
   4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.50, belowNetDriveChance:0.01 },
 };
-let diff = DIFFICULTIES[2]; // default until chosen
+let level = 3; // start at Advanced
+let diff = DIFFICULTIES[level];
+let consecutiveLosses = 0; // for dynamic difficulty
 
+function adjustDifficulty(playerWon){
+  if(playerWon){
+    consecutiveLosses = 0;
+    if(level < 4){ level++; diff = DIFFICULTIES[level]; ai.spd = diff.spd; }
+  } else {
+    consecutiveLosses++;
+    if(consecutiveLosses >= 2){
+      consecutiveLosses = 0;
+      if(level > 1){ level--; diff = DIFFICULTIES[level]; ai.spd = diff.spd; }
+    }
+  }
+}
 
-// ── Sound ─────────────────────────────────────────────────────────────
+function endTutorial(){
+  document.getElementById('tutScreen').style.display='none';
+  document.getElementById('tutEndBtn').style.display='none';
+  showServe();
+}
+
 const HIT_SOUNDS = [
   new Audio('https://filedn.eu/lxH8tISH75BJpFM7FmXX9W5/pickleball_2d_fun/pickleball_sound_1_new.mp3'),
   new Audio('https://filedn.eu/lxH8tISH75BJpFM7FmXX9W5/pickleball_2d_fun/pickleball_sound_2_news.mp3'),
@@ -366,13 +363,14 @@ function toggleMute(){
 function endTutorial(){
   document.getElementById('tutScreen').style.display='none';
   document.getElementById('tutEndBtn').style.display='none';
-  document.getElementById('diffScreen').style.display='flex';
+  startGame(3);
 }
 
-function startGame(level){
+function startGame(lv){
+  level = lv;
   diff = DIFFICULTIES[level];
   ai.spd = diff.spd;
-  document.getElementById('diffScreen').style.display='none';
+  consecutiveLosses = 0;
   showServe();
 }
 
@@ -498,7 +496,11 @@ function predictLanding(){
 function playerHit(type){
   if(gs!=='rally') return;
   if(ball.hitter==='player') return;
-  if(distToBall()>REACH){setMsg('Too far to reach!','#ff6b35');return;}
+  if(distToBall()>REACH){
+    // Ball already passed if it's moving away from player (vx > 0 = toward AI side)
+    if(ball.vx > 0) fb.hitAfterBallPassed = true;
+    setMsg('Too far to reach!','#ff6b35');return;
+  }
   if(inNVZ(pl.x) && !plCanEnterNVZ){setMsg('No shots in the NVZ!','#ffcc44');return;}
   // Two-bounce serve rule: player cannot volley the AI's return of serve
   if(serveRally && ball.bounces===0){setMsg('Must let it bounce! (serve rule)','#ffcc44');return;}
@@ -520,6 +522,7 @@ function playerHit(type){
     v=capPeak(launch(ball.x,ball.y,tx,GY-BALL_R,T), ball.y);
     const ballBelowNet = ball.y >= NET_TOP-4;
     if(ballBelowNet){
+      fb.droveBelowNet = true;
       if(Math.random() < 0.5){
         // Hits the net
         const tNet=NET_X-ball.x;
@@ -542,6 +545,8 @@ function playerHit(type){
   }
   // ── LOB ────────────────────────────────────────────────────────────────
   else if(type==='lob'){
+    const backThreshold = LB + (NET_X - LB) * 0.5; // back 50% of player court
+    if(pl.x < backThreshold) fb.lobFromBackCount++;
     const txBase = perfect ? (RB-100 + RB-15)/2 : rnd(RB-100,RB-15)+rnd(-spread,spread);
     const tx = clamp(txBase, NET_X+8, RB-8);
     // great/perfect: ball must be near canvas TOP when crossing net → true high arc
@@ -557,6 +562,8 @@ function playerHit(type){
   }
   // ── DINK ───────────────────────────────────────────────────────────────
   else if(type==='dink'){
+    const backThreshold = LB + (NET_X - LB) * 0.5;
+    if(pl.x < backThreshold) fb.dinkFromBack = true;
     const txBase = perfect ? (NET_X+12 + RKS-12)/2 : rnd(NET_X+12,RKS-12)+rnd(-spread*0.5,spread*0.5);
     const tx = clamp(txBase, NET_X+6, RKS-6);
     // Perfect/great: skims tight just over net (low = hard to attack)
@@ -646,6 +653,7 @@ function aiHit(){
       ball.vx=vOut.vx; ball.vy=vOut.vy; // flies far out of player's side
     }
     ball.hitter='ai'; ball.bounces=0; ball.spin=0;
+    aiLastShotWasDrive=true;
     aiHitAnim=22; aiHitContactY=ball.y;
     plCanEnterNVZ=false;
     addFx(ball.x,ball.y,'#ff9090'); playHitSound();
@@ -682,7 +690,20 @@ function aiHit(){
       tx=rnd(LB+10,LB+80); T=90*SF;
     }
   } else if(isDrive){
-    tx=rnd(LB+15, LKE-10); T=28*SF;
+    // Advanced (3): 50% perfect / 50% great drive quality
+    // Elite (4):    75% perfect / 25% great drive quality
+    let driveQ = 0; // default: no quality boost
+    if(level===3) driveQ = Math.random()<0.50 ? 1.0 : 0.75;
+    else if(level===4) driveQ = Math.random()<0.75 ? 1.0 : 0.75;
+    if(driveQ >= 1.0){
+      // Perfect: tight target, fastest T
+      tx = rnd(LB+25, LKE-15); T = 14*SF;
+    } else if(driveQ >= 0.75){
+      // Great: slightly wider target, a touch slower
+      tx = rnd(LB+20, LKE-12); T = 20*SF;
+    } else {
+      tx = rnd(LB+15, LKE-10); T = 28*SF;
+    }
   } else if(r < wLob){
     tx=rnd(LB+10,LB+80); T=90*SF;
   } else if(r < wLob+wDrive){
@@ -698,6 +719,7 @@ function aiHit(){
   const v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
   ball.vx=v.vx; ball.vy=v.vy;
   ball.hitter='ai'; ball.bounces=0; ball.spin=0;
+  aiLastShotWasDrive = isDrive;
   aiHitAnim=22; aiHitContactY=ball.y;
   plCanEnterNVZ=false;
   addFx(ball.x,ball.y,'#ff9090'); playHitSound();
@@ -709,7 +731,7 @@ function splitStep(){
   if(gs!=='rally') return;
   // Good window: ball is on AI's side and AI is about to hit
   // Measure how soon AI will hit: ai.timer is frames remaining
-  const windowGood = ball.hitter==='player' && ball.x>NET_X && ai.timer>0 && ai.timer<28;
+  const windowGood = ball.hitter==='player' && ball.x>NET_X;
   if(windowGood){
     splitStepBoost=true;
     splitStepGlow=90; // glow for ~1.5 seconds
@@ -720,6 +742,7 @@ function splitStep(){
 }
 function serve(){
   if(gs!=='idle') return;
+  document.getElementById('feedbackBox').style.display='none';
   const tx=rnd(RKS+30,RB-40);
   const T=60*SF;
   ball.x=pl.x; ball.y=GY-70;
@@ -739,18 +762,45 @@ function serve(){
 // ── Point bookkeeping ─────────────────────────────────────────────────
 function endPoint(winner,reason){
   gs='over'; ball.inPlay=false; disableAll();
+  adjustDifficulty(winner==='player');
   if(winner==='player'){score.p++;setMsg('YOU WIN: '+reason,'#6ddc5a');}
-  else{score.a++;setMsg('AI SCORES: '+reason,'#ff6b6b');}
+  else{score.a++;setMsg('AI SCORES: '+reason,'#ff6b6b'); showFeedback();}
   document.getElementById('sP').textContent=score.p;
   document.getElementById('sA').textContent=score.a;
   if((score.p>=11||score.a>=11)&&Math.abs(score.p-score.a)>=2){
     setTimeout(()=>{
       setMsg(score.p>score.a?'🏆 YOU WIN THE GAME!':'AI WINS – rematch?',score.p>score.a?'#6ddc5a':'#ff6b6b');
+      score.p=0; score.a=0;
+      document.getElementById('sP').textContent=0;
+      document.getElementById('sA').textContent=0;
+      level=3; diff=DIFFICULTIES[level]; ai.spd=diff.spd; consecutiveLosses=0;
       gs='idle'; showServe();
     },1800);
   } else {
     setTimeout(resetPoint,2000);
   }
+}
+
+function showFeedback(){
+  const tips = [];
+  if(consecutiveSameShots >= 4)
+    tips.push('Vary your shots. Using the same shot makes it predictable for your opponent.');
+  if(fb.droveBelowNet)
+    tips.push('Drive the ball only when it\'s at or above net height.');
+  if(fb.failedReturnDrive)
+    tips.push('Prepare to return a hard drive by dropping the ball.');
+  if(fb.lobFromBackCount > 4)
+    tips.push('Lobbing from the back of court makes it easy for the opponent to be aggressive. Try dropping instead.');
+  if(fb.dinkFromBack)
+    tips.push('Try dropping the ball instead of dinking from the back of court. Dinking is typically done near the net.');
+  if(fb.hitAfterBallPassed)
+    tips.push('Press the button when the ball is as close to the paddle as possible. You need to anticipate and time it well.');
+  const chosen = tips.length > 0
+    ? tips[Math.floor(Math.random()*tips.length)]
+    : 'Split step right before the opponent hits the ball to be able to hit better.';
+  const box = document.getElementById('feedbackBox');
+  box.textContent = chosen;
+  box.style.display = 'block';
 }
 function resetPoint(){
   pl.x=130; ai.x=LW-130;
@@ -758,7 +808,8 @@ function resetPoint(){
   ai.hit=false; ai.timer=0; rally=0;
   plCanEnterNVZ=false; aiCanEnterNVZ=false; netFault=false;
   aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
-  lastShotType=''; consecutiveSameShots=0;
+  lastShotType=''; consecutiveSameShots=0; aiLastShotWasDrive=false;
+  fb = {droveBelowNet:false, failedReturnDrive:false, lobFromBackCount:0, dinkFromBack:false, hitAfterBallPassed:false};
   gs='idle'; showServe(); setMsg('Press SERVE','#888');
 }
 function showServe(){
@@ -852,7 +903,10 @@ function update(){
       if(serveRally && rally===0 && ball.bounces===1) ai.timer=Math.max(ai.timer,2); // let it register
     }
     if(ball.x < NET_X && ball.hitter==='ai'){
-      if(ball.bounces>=2){ endPoint('ai','You failed to return!'); return; }
+      if(ball.bounces>=2){
+        if(aiLastShotWasDrive) fb.failedReturnDrive = true;
+        endPoint('ai','You failed to return!'); return;
+      }
       // Two-bounce: AI return of serve must bounce before player can hit
       if(serveRally && rally===1 && ball.bounces===1) serveRally=false; // both sides bounced, rule satisfied
     }
@@ -905,7 +959,7 @@ function updateUI(){
   const nvz=inNVZ(pl.x) && !plCanEnterNVZ;
   const base=canHit&&close&&!nvz;
   const canSplit=gs==='rally'&&ball.hitter==='player'&&ball.x>NET_X;
-  const inWindow=canSplit && ai.timer>0 && ai.timer<28;
+  const inWindow=canSplit;
   const bSplitEl=document.getElementById('bSplit');
   bSplitEl.classList.toggle('inactive', !canSplit);
   if(inWindow){
