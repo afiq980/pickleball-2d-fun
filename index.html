@@ -347,7 +347,7 @@ const DIFFICULTIES = {
   4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.50, belowNetDriveChance:0.01 },
   5: { label:'Elite+',      shotWeights:[0.05, 0.55,  0.25, 0.15],  bounceWait:0.05, timerMult:0.40, spd:5.5, lobDriveChance:1.00, volleyDriveChance:1.00, belowNetDriveChance:0.005 },
 };
-let level = 3; // start at Advanced
+let level = 5; // start at Elite+
 let diff = DIFFICULTIES[level];
 let consecutiveLosses = 0; // for dynamic difficulty
 
@@ -398,7 +398,7 @@ function restartToTutorial(){
   aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
   lastShotType=''; consecutiveSameShots=0; aiLastShotWasDrive=false; childHitPending=false;
   fb={droveBelowNet:false,failedReturnDrive:false,lobFromBackCount:0,dinkFromBack:false,hitAfterBallPassed:false};
-  consecutiveLosses=0; level=3; diff=DIFFICULTIES[level]; ai.spd=diff.spd;
+  consecutiveLosses=0; level=5; diff=DIFFICULTIES[level]; ai.spd=diff.spd;
   document.getElementById('sP').textContent=0;
   document.getElementById('sA').textContent=0;
   document.getElementById('feedbackBox').style.display='none';
@@ -502,7 +502,7 @@ function childModeTickHit(){
 function endTutorial(){
   document.getElementById('tutScreen').style.display='none';
   document.getElementById('tutEndBtn').style.display='none';
-  startGame(3);
+  startGame(5);
 }
 
 function startGame(lv){
@@ -971,7 +971,7 @@ function endPoint(winner,reason){
       score.p=0; score.a=0;
       document.getElementById('sP').textContent=0;
       document.getElementById('sA').textContent=0;
-      level=3; diff=DIFFICULTIES[level]; ai.spd=diff.spd; consecutiveLosses=0;
+      level=5; diff=DIFFICULTIES[level]; ai.spd=diff.spd; consecutiveLosses=0;
       gs='idle'; showServe();
     },1800);
   } else {
@@ -1056,8 +1056,12 @@ function update(){
 
   // ── Ball physics ────────────────────────────────────────────────────
   ball.vy += G;
-  // Topspin: extra downward acceleration once ball has crossed to opponent's side
-  if(ball.spin > 0 && ball.x > NET_X) ball.vy += ball.spin;
+  // Topspin: extra downward acceleration once ball crosses to the opponent's side.
+  // For player-hit balls the opponent's side is x > NET_X; for AI-hit balls it's x < NET_X.
+  if(ball.spin > 0){
+    const crossedToOpponent = ball.hitter === 'player' ? ball.x > NET_X : ball.x < NET_X;
+    if(crossedToOpponent) ball.vy += ball.spin;
+  }
   ball.prevX = ball.x; ball.prevY = ball.y;
   ball.x += ball.vx; ball.y += ball.vy;
 
@@ -1368,10 +1372,13 @@ function drawGuide(){
   if(!ball.inPlay||ball.hitter!=='ai'||Math.abs(ball.vx)<1) return;
   cx.save();cx.globalAlpha=0.1;cx.strokeStyle='#fff';cx.lineWidth=1.5;cx.setLineDash([4,9]);
   cx.beginPath();
-  let tx=ball.x,ty=ball.y,tvx=ball.vx,tvy=ball.vy;
+  let tx=ball.x,ty=ball.y,tvx=ball.vx,tvy=ball.vy,tspin=ball.spin;
   cx.moveTo(tx,ty);
   for(let i=0;i<65;i++){
-    tvy+=G;tx+=tvx;ty+=tvy;
+    tvy+=G;
+    // Topspin only kicks in on the player's side for AI-hit balls (x < NET_X)
+    if(tspin > 0 && tx < NET_X) tvy += tspin;
+    tx+=tvx;ty+=tvy;
     if(ty>=GY-BALL_R){ty=GY-BALL_R;tvy=-tvy*0.60;tvx*=0.88;}
     cx.lineTo(tx,ty);
     if(tx<LB-10||tx>RB+10) break;
