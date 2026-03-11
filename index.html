@@ -318,8 +318,10 @@ let plHitAnim=0;
 let plHitContactY=GY-70;
 let aiHitAnim=0;
 let aiHitContactY=GY-70;
+let aiLastShotType=''; // debug/telemetry: last AI shot decision
 let lastShotType='';
 let consecutiveSameShots=0;
+let consecutiveSoftShots=0; // consecutive player dinks/drops treated as one family
 let aiLastShotWasDrive=false;
 // ── Feedback tracking ─────────────────────────────────────────────────
 let fb = {
@@ -390,7 +392,7 @@ function restartToTutorial(){
   ai.hit=false; ai.timer=0;
   plCanEnterNVZ=false; aiCanEnterNVZ=false; netFault=false;
   aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
-  lastShotType=''; consecutiveSameShots=0; aiLastShotWasDrive=false; childHitPending=false;
+  lastShotType=''; consecutiveSameShots=0; consecutiveSoftShots=0; aiLastShotWasDrive=false; childHitPending=false;
   fb={droveBelowNet:false,failedReturnDrive:false,lobFromBackCount:0,dinkFromBack:false,hitAfterBallPassed:false};
   consecutiveLosses=0; level=5; diff=DIFFICULTIES[level]; ai.spd=diff.spd;
   document.getElementById('sP').textContent=0;
@@ -767,6 +769,14 @@ function playerHit(type){
   // Track consecutive same shot type
   if(type === lastShotType) consecutiveSameShots++;
   else { lastShotType=type; consecutiveSameShots=1; }
+  // Track consecutive "soft" shots (dink or drop) as one family
+  const isSoftPlayerShot = (type === 'dink' || type === 'drop');
+  const lastWasSoft = (lastShotType === 'dink' || lastShotType === 'drop');
+  if(isSoftPlayerShot){
+    consecutiveSoftShots = lastWasSoft ? consecutiveSoftShots + 1 : 1;
+  } else {
+    consecutiveSoftShots = 0;
+  }
   ai.hit=false; ai.timer=Math.round(T*0.62*diff.timerMult);
   aiCanEnterNVZ=false;
 
@@ -795,11 +805,44 @@ function aiHit(){
   const [wLob, wDrive, wDink, wDrop] = diff.shotWeights;
   let tx,T;
 
+  // ── Serve-return and repeated-dink context ────────────────────────────
+  const isServeReturn = serveRally && rally === 0;
+  const aiBelowNet = ball.y >= NET_TOP - 4;
+
+  // If the player has repeatedly played soft shots (dinks/drops), strongly
+  // bias AI toward a safe, deep lob instead of continuing low exchanges
+  // that result in frequent AI net errors.
+  const repeatedSoft =
+    !isServeReturn &&
+    consecutiveSoftShots >= 3 &&
+    !childMode;
+  if(repeatedSoft && Math.random() < 0.9){
+    // Aim deep but clearly inside the baseline on player's side
+    tx = clamp(rnd(LB+35, LB+85), LB+10, NET_X-8);
+    // Use player's lob-style flight: high over net, dropping deep
+    const q = 1.0;
+    const netClearY = MIN_Y + 15;
+    const Tout = {T:0};
+    let v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+    if(!v){
+      const Tlob = 115*SF;
+      v = capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,Tlob),ball.x,ball.y), ball.y);
+    }
+    ball.vx = v.vx; ball.vy = v.vy;
+    ball.hitter='ai'; ball.bounces=0;
+    ball.spin = 0.06;
+    aiLastShotType='LOB (anti-dink)';
+    aiLastShotWasDrive=false;
+    aiHitAnim=22; aiHitContactY=ball.y;
+    plCanEnterNVZ=false;
+    addFx(ball.x,ball.y,'#ff9090'); playHitSound();
+    updateUI();
+    return;
+  }
+
   // ── Below-net drive error (checked first, before all other logic) ────
   // Not applied on serve returns — AI always returns serve cleanly
   // Not applied in child mode — AI never drives
-  const isServeReturn = serveRally && rally === 0;
-  const aiBelowNet = ball.y >= NET_TOP - 4;
   if(!isServeReturn && !childMode && aiBelowNet && Math.random() < diff.belowNetDriveChance){
     // AI mishits from below net — drives anyway, ball hits net or flies out
     tx = rnd(LB+15, LKE-10); T = 28*SF;
@@ -813,6 +856,7 @@ function aiHit(){
       ball.vx=vOut.vx; ball.vy=vOut.vy; // flies far out of player's side
     }
     ball.hitter='ai'; ball.bounces=0; ball.spin=0;
+    aiLastShotType='DRIVE (below-net error)';
     aiLastShotWasDrive=true;
     aiHitAnim=22; aiHitContactY=ball.y;
     plCanEnterNVZ=false;
@@ -821,39 +865,8 @@ function aiHit(){
     return;
   }
 
-  // Elite+ (level 5): ball is below net — drop 40% / dink 40% / lob 20%
-  if(!isServeReturn && !childMode && level === 5 && aiBelowNet){
-    let epV, epT;
-    const epErrorRange = (1 - aiAccuracy) * 120; // same formula as normal non-drive shots
-    const epRoll = Math.random();
-    if(epRoll < 0.40){
-      // Drop — center of player's kitchen, spread by fatigue
-      let epTx = clamp((LKE + NET_X) / 2 + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
-      epT = 70 * SF;
-      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
-      ball.spin = 0.05;
-    } else if(epRoll < 0.80){
-      // Dink — tight to near side of player's kitchen, spread by fatigue
-      let epTx = clamp(rnd(LKE+8, NET_X-8) + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
-      epT = 75 * SF;
-      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
-      ball.spin = 0.10;
-    } else {
-      // Lob — deep to player's back court, spread by fatigue
-      let epTx = clamp(rnd(LB+15, LB+55) + rnd(-epErrorRange, epErrorRange), LB+5, NET_X-5);
-      epT = 110 * SF;
-      epV = capPeak(ensureNetClear(launch(ball.x, ball.y, epTx, GY-BALL_R, epT), ball.x, ball.y), ball.y);
-      ball.spin = 0.06;
-    }
-    ball.vx = epV.vx; ball.vy = epV.vy;
-    ball.hitter='ai'; ball.bounces=0;
-    aiLastShotWasDrive = false;
-    aiHitAnim=22; aiHitContactY=ball.y;
-    plCanEnterNVZ=false;
-    addFx(ball.x, ball.y, '#ff9090'); playHitSound();
-    updateUI();
-    return;
-  }
+  // Elite+ (level 5) now uses the same base shot logic as other levels;
+  // no special below-net handling for dink/drop beyond the shared parameters.
 
   // ── Opportunistic drive checks (supersede normal shot weights) ────────
   const peakAboveNet = ballPeakY() < NET_TOP;
@@ -871,8 +884,10 @@ function aiHit(){
     // In child mode: never drive on serve return either
     if(!childMode && ball.y < NET_TOP && Math.random()<0.40){
       tx=rnd(LB+15, LKE-10); T=28*SF;
+      aiLastShotType='DRIVE (serve return)';
     } else {
       tx=rnd(LB+10,LB+80); T=90*SF;
+      aiLastShotType='LOB (serve return)';
     }
   } else if(isDrive){
     // Advanced (3): 50% perfect / 50% great drive quality
@@ -890,19 +905,85 @@ function aiHit(){
     } else {
       tx = rnd(LB+15, LKE-10); T = 28*SF;
     }
+    aiLastShotType='DRIVE';
   } else if(r < wLob){
     tx=rnd(LB+10,LB+80); T=90*SF;
+    aiLastShotType='LOB';
   } else if(r < wLob+wDrive){
     tx=rnd(LB+15,LKE-15); T=32*SF;
+    aiLastShotType='DRIVE';
   } else if(r < wLob+wDrive+wDink){
+    // Base dink: into player's near kitchen
     tx=rnd(LKE+8,NET_X-8); T=70*SF;
+    aiLastShotType='DINK';
   } else {
+    // Base drop: into player's deeper kitchen
     tx=rnd(LKE-55,LKE+8); T=70*SF;
+    aiLastShotType='DROP';
   }
   tx=clamp(tx,LB+5,NET_X-5);
   const errorRange = (1 - aiAccuracy) * (isDrive ? 40 : 120);
   tx = clamp(tx + rnd(-errorRange, errorRange), LB+5, NET_X-5);
-  const v=capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
+
+  // For non-drives (dink/drop/lob), reuse the same style of flight
+  // calculations as the player: explicit net-clearance heights and
+  // launchThrough-based trajectories for each shot type.
+  let v;
+  const isSoft = !isDrive && !isServeReturn &&
+    (aiLastShotType==='DINK' || aiLastShotType==='DROP' || aiLastShotType==='LOB');
+  if(isSoft){
+    const q = 1.0;           // treat AI as "perfect" timing for physics shape
+    const Tout = {T:0};
+    if(aiLastShotType === 'LOB'){
+      // Mirror player's lob logic, targeting deep in player's court
+      const netClearY = q>=0.7
+        ? MIN_Y + 15
+        : NET_TOP - 20 - (1-q)*40;
+      v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+      if(!v){
+        v = capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,120*SF),ball.x,ball.y), ball.y);
+      }
+      ball.spin = q>=0.7 ? 0.06 : 0.02;
+    } else if(aiLastShotType === 'DINK'){
+      // Slightly higher net clearance than player to reduce net errors
+      const netClearY = q>=0.7
+        ? NET_TOP - 10
+        : MIN_Y + (q/0.7) * (NET_TOP - 10 - MIN_Y - 30);
+      v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+      if(!v){
+        v = capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,78*SF),ball.x,ball.y), ball.y);
+      }
+      // Extra safety: if trajectory still crosses near the tape but low,
+      // nudge it up a bit so AI dinks clip the net less often.
+      const tNet = (NET_X - ball.x) / v.vx;
+      if(tNet > 0){
+        const yAtNet = ball.y + v.vy*tNet + 0.5*G*tNet*tNet;
+        const need   = NET_TOP - 6; // require a bit more clearance for AI
+        if(yAtNet > need){
+          v.vy -= (yAtNet - need) / tNet;
+        }
+      }
+      ball.spin = q>=0.7 ? 0.10 : 0.04;
+    } else { // DROP
+      // Also give AI a touch more clearance on drops vs player
+      const netClearY = q>=0.7
+        ? NET_TOP - 24
+        : MIN_Y + (q/0.7) * (NET_TOP - 24 - MIN_Y - 20);
+      v = launchThrough(ball.x, ball.y, netClearY, tx, Tout);
+      if(!v){
+        const peakY = clamp(MIN_Y+(1-q)*80, MIN_Y+5, GY*0.18);
+        const riseH = Math.max(ball.y-peakY, 10);
+        const vyUp  = -Math.sqrt(2*G*riseH);
+        const tUp   = -vyUp/G;
+        const Tsoft = tUp + Math.sqrt(2*(GY-BALL_R-peakY)/G);
+        v = capPeak({vx:(tx-ball.x)/Tsoft, vy:vyUp}, ball.y);
+      }
+      ball.spin = 0.05;
+    }
+  } else {
+    v = capPeak(ensureNetClear(launch(ball.x,ball.y,tx,GY-BALL_R,T),ball.x,ball.y), ball.y);
+  }
+
   ball.vx=v.vx; ball.vy=v.vy;
   ball.hitter='ai'; ball.bounces=0; ball.spin=0;
   aiLastShotWasDrive = isDrive;
@@ -994,7 +1075,7 @@ function resetPoint(){
   ai.hit=false; ai.timer=0; rally=0;
   plCanEnterNVZ=false; aiCanEnterNVZ=false; netFault=false;
   aiAccuracy=1.0; splitStepBoost=false; splitStepGlow=0; serveRally=false;
-  lastShotType=''; consecutiveSameShots=0; aiLastShotWasDrive=false;
+  lastShotType=''; consecutiveSameShots=0; consecutiveSoftShots=0; aiLastShotWasDrive=false;
   childHitPending=false;
   fb = {droveBelowNet:false, failedReturnDrive:false, lobFromBackCount:0, dinkFromBack:false, hitAfterBallPassed:false};
   gs='idle'; showServe(); setMsg('Press SERVE','#888');
@@ -1396,6 +1477,26 @@ function drawHUD(){
     cx.save();cx.globalAlpha=0.28;
     cx.fillStyle='#fff';cx.font='bold 13px DM Sans';cx.textAlign='center';
     cx.fillText('Rally '+rally,LW/2,20);
+    cx.restore();
+  }
+  // Show current difficulty label (DUPR band)
+  if(diff && DIFFICULTIES[level]){
+    cx.save();
+    cx.globalAlpha = 0.8;
+    cx.fillStyle = '#6ddc5a';
+    cx.font = '10px DM Sans';
+    cx.textAlign = 'left';
+    cx.fillText(DIFFICULTIES[level].label, LB, 18);
+    cx.restore();
+  }
+  // Debug/telemetry: show last AI shot choice
+  if(aiLastShotType){
+    cx.save();
+    cx.globalAlpha=0.75;
+    cx.fillStyle='#ff9090';
+    cx.font='10px DM Sans';
+    cx.textAlign='right';
+    cx.fillText('AI: '+aiLastShotType, RB, 32);
     cx.restore();
   }
 }
