@@ -344,8 +344,8 @@ const DIFFICULTIES = {
   1: { label:'DUPR ≤ 3.0',  shotWeights:[0.70, 0.083, 0.05, 0.167], bounceWait:0.85, timerMult:1.0,  spd:2.8, lobDriveChance:0.30, volleyDriveChance:0.10, belowNetDriveChance:0.04 },
   2: { label:'DUPR 3–3.2',  shotWeights:[0.133,0.60,  0.133,0.133], bounceWait:0.75, timerMult:0.85, spd:3.2, lobDriveChance:0.50, volleyDriveChance:0.30, belowNetDriveChance:0.03 },
   3: { label:'DUPR 3.2–3.5',shotWeights:[0.20, 0.40,  0.20, 0.20],  bounceWait:0.40, timerMult:0.70, spd:3.8, lobDriveChance:0.65, volleyDriveChance:0.40, belowNetDriveChance:0.02 },
-  4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.50, belowNetDriveChance:0.01 },
-  5: { label:'Elite+',      shotWeights:[0.05, 0.55,  0.25, 0.15],  bounceWait:0.05, timerMult:0.40, spd:5.5, lobDriveChance:1.00, volleyDriveChance:1.00, belowNetDriveChance:0.005 },
+  4: { label:'DUPR 3.5+',   shotWeights:[0.10, 0.20,  0.60, 0.10],  bounceWait:0.10, timerMult:0.55, spd:4.5, lobDriveChance:0.80, volleyDriveChance:0.80, belowNetDriveChance:0.01 },
+  5: { label:'Elite+',      shotWeights:[0.10, 0.10, 0.40, 0.40],  bounceWait:0.05, timerMult:0.40, spd:5.5, lobDriveChance:0.90, volleyDriveChance:0.90, belowNetDriveChance:0.005 },
 };
 let level = 5; // start at Elite+
 let diff = DIFFICULTIES[level];
@@ -362,12 +362,6 @@ function adjustDifficulty(playerWon){
       if(level > 1){ level--; diff = DIFFICULTIES[level]; ai.spd = diff.spd; }
     }
   }
-}
-
-function endTutorial(){
-  document.getElementById('tutScreen').style.display='none';
-  document.getElementById('tutEndBtn').style.display='none';
-  showServe();
 }
 
 const HIT_SOUNDS = [
@@ -502,7 +496,7 @@ function childModeTickHit(){
 function endTutorial(){
   document.getElementById('tutScreen').style.display='none';
   document.getElementById('tutEndBtn').style.display='none';
-  startGame(5);
+  setTimeout(() => startGame(5), 350);
 }
 
 function startGame(lv){
@@ -861,12 +855,6 @@ function aiHit(){
     return;
   }
 
-  // Elite AI (3.5+): drive if ball is above net height and AI paddle is close
-  const aiPaddleX = ai.x - PADDLE_DX;
-  const nearBall = Math.abs(ball.x - aiPaddleX) < REACH;
-  const ballAboveNet = ball.y < NET_TOP;
-  const eliteDrive = !childMode && (diff === DIFFICULTIES[4] || diff === DIFFICULTIES[5]) && ballAboveNet && nearBall;
-
   // ── Opportunistic drive checks (supersede normal shot weights) ────────
   const peakAboveNet = ballPeakY() < NET_TOP;
   const volleyAboveNet = ball.bounces === 0 && ballCanVolleyAboveNet();
@@ -877,11 +865,11 @@ function aiHit(){
     else if(volleyAboveNet && Math.random() < diff.volleyDriveChance) forceDrive = true;
   }
 
-  const isDrive = forceDrive || eliteDrive;
+  const isDrive = forceDrive;
 
   if(isServeReturn){
     // In child mode: never drive on serve return either
-    if(!childMode && ballAboveNet && Math.random()<0.40){
+    if(!childMode && ball.y < NET_TOP && Math.random()<0.40){
       tx=rnd(LB+15, LKE-10); T=28*SF;
     } else {
       tx=rnd(LB+10,LB+80); T=90*SF;
